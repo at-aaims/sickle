@@ -2,7 +2,8 @@
 
 SICKLE = Sparse Intelligent Curation for Knowledge-driven Learning Efficiency 
 
-"Separating the wheat from the chaff"
+SICKLE is a tool to "separate the wheat from the chaff", that is, to extract 
+data with the probabilistically highest information content.
 
 # Subsampling
 
