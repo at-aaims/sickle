@@ -1,5 +1,4 @@
 import numpy as np
-import kerastuner as kt
 import os
 import time
 from constants import *
@@ -12,14 +11,6 @@ def compute_euclidean_distance(x, y):
 def scale(func, x):
     """convert data to 2D scale and reshape back to 3D"""
     return func(x.reshape(-1, x.shape[-1])).reshape(x.shape)
-
-def tune(func, x_train, y_train, x_test, y_test, batch_size,
-         objective='val_loss', epochs=50, max_epochs=100):
-    tuner = kt.Hyperband(func, objective=objective, max_epochs=max_epochs, overwrite=True)
-    tuner.search(x_train, y_train, batch_size=batch_size, epochs=epochs,
-                 validation_data=(x_test, y_test))
-    print(tuner.results_summary(1))
-    return tuner.get_best_models()[0]
 
 def scale_probabilities(probs, a=0.01, b=0.99):
     """

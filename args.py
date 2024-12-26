@@ -33,7 +33,6 @@ parser.add_argument('--target', type=str, default='wz', choices=['drag', 'p', 'w
 parser.add_argument('--time', type=str, default='1000', help='time step to analyze')
 parser.add_argument('-s', '--snapshot', action='store_true', default=False, help='load snapshots/raw_data.npz instead of running dataloader')
 parser.add_argument('--sequence', action='store_true', default=False, help='aggregate individual time-steps into a sequence')
-parser.add_argument('--tune', action='store_true', default=False, help='run hyperparameter optimization')
 parser.add_argument('-v', '--verbose', action='store_true', default=False, help='verbose output')
 parser.add_argument('--overlap', type=int, default=1, help='number of time steps to overlap windows')
 parser.add_argument('--window', type=int, default=2, help='time window sequence size')

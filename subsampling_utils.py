@@ -66,7 +66,7 @@ def create_maxent_subsampler(cv, args):
         cluster_labels, clusters = perform_kmeans(data, num_clusters)
 
         # Compute in-strength values from probability distributions and adjacency matrix
-        in_strengths = compute_prob_dists_and_adj_matrix(clusters, timestep=timestep)
+        in_strengths = compute_entropy(clusters, timestep=timestep)
 
         # Probabilistically select samples from clusters based on in-strength values
         probs = np.zeros((data.shape[0]))
@@ -85,7 +85,7 @@ def create_maxent_subsampler(cv, args):
     return subsample_maxent_closure
 
 
-def compute_prob_dists_and_adj_matrix(clusters, timestep=0, num_bins=50):
+def compute_entropy(clusters, timestep=0, num_bins=50):
     """
     Computes probability distributions, adjacency matrix, and graph metrics.
 
@@ -93,8 +93,6 @@ def compute_prob_dists_and_adj_matrix(clusters, timestep=0, num_bins=50):
     - clusters (list of arrays): Subsets of data grouped into clusters.
     - num_bins (int): Number of bins for histograms. Default is 50.
     - timestep (int): Current timestep for labeling output. Default is 0.
-    - args (Namespace): Parsed arguments including num_clusters and plot flag.
-    - plot_dir (str): Directory to save plots. Default is current directory.
 
     Returns:
     - in_degree (list of floats): List of in-degree relative entropy strengths
@@ -180,7 +178,7 @@ def subsample_maxent(X, cv, num_samples):
     data = cv[timestep, :].reshape(-1, 1)
     labels, clusters = perform_kmeans(data, num_clusters)
 
-    in_strengths = compute_prob_dists_and_adj_matrix(clusters)
+    in_strengths = compute_entropy(clusters)
 
     # Probabilistically select from clusters according to in-strength values
     probs = np.zeros((data.shape[0]))
