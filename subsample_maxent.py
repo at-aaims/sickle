@@ -443,21 +443,6 @@ if rank == 0:
 
     fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
     
-    if args.dtype == "interpolated":
-        # note: this uses the target Y as previously read
-        #       future improvement would be to have this self-container - read the drag here directly
-    
-        dfpath = os.path.join(SNPDIR, 'interpolated.npz')
-        data = np.load(dfpath)
-        x, y, X, _, cv = data['x'], data['y'], data['X'], data['Y'], data['cv']
-    
-        x, y = x[0], y[0] # grid points should not change over time
-        x = x.reshape(-1, 1)
-        y = y.reshape(-1, 1)
-    
-        X = X.reshape(X.shape[0], -1, X.shape[-1])[1:]
-        cv = cv.reshape(cv.shape[0], -1)[1:]
-    
     print(f'Data shape: Spatial x - {x.shape}, spatial y - {y.shape}, NN Input/observation - {X.shape}, NN Output/targets - {Y.shape}, Clustering/maxEnt variable - {cv.shape}')
 
 # Save data for broadcasting to all ranks
