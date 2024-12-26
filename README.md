@@ -10,9 +10,6 @@ cost of training large models.
 
 Login to Frontier
 
-(no module purge - leave default loaded modules)
-
-module load cray-python/3.10.10
 source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
 
 OPENBLAS_NUM_THREADS=4 python subsample_maxent_seq.py --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
@@ -32,3 +29,10 @@ python -u train-pt-ddp.py --epochs 10 --patience 100 --dims 3 --dtype sst-binary
 python subsample_random.py --path ../DataSiftML/data/cylinder --target drag -ns 540 -cv p --target drag
 
 python subsample_maxent.py --path ../DataSiftML/data/cylinder --target drag -ns 540 -cv p --target drag
+
+
+# Tests on Frontier
+
+source '/lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate'
+
+OPENBLAS_NUM_THREADS=4 python subsample.py maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64

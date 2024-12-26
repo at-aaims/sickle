@@ -6,6 +6,7 @@ from constants import FPT_LOCAL, FPT_GLOBAL, SNPDIR
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 archs = ['fcn', 'fcn_sst', 'lstm', 'transformer']
+parser.add_argument("method", choices=["maxent", "random"], help='subsample method')
 parser.add_argument('--arch', type=str, default='fcn_sst', choices=archs, help='Type of neural network architecture')
 parser.add_argument('-b', '--batch', type=int, default=32, help='batch size')
 parser.add_argument('-cv', '--cluster_var', nargs="+", type=str, default='pv', choices=['p', 'pv', 'wz', 'pwz', 'stream'], help='cluster variable')

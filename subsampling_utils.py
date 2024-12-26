@@ -6,6 +6,7 @@ import scipy.stats
 
 from sklearn.cluster import KMeans
 from args import args
+from constants import PLTDIR
 
 
 def check_and_create_dirs(directory):
@@ -51,6 +52,7 @@ def perform_kmeans(data, num_clusters):
     clusters = [data[np.argwhere(y_pred == i).flatten()] for i in range(args.num_clusters)]
     clusters = [cluster.flatten() for cluster in clusters]
     return labels, clusters
+
 
 def create_maxent_subsampler(cv, args):
     """ Creates a closure for subsample_maxent that captures cv and args. """
@@ -155,7 +157,7 @@ def compute_entropy(clusters, timestep=0, num_bins=50):
         plt.imshow(adj_matrix, cmap='inferno')
         cbar = plt.colorbar(); cbar.set_label(r'relative entropy, $D$')
         plt.axis('equal')
-        plt.savefig(os.path.join(plot_dir, f'adj_matrix_{timestep:04d}.png'), dpi=100)
+        plt.savefig(os.path.join(PLTDIR, f'adj_matrix_{timestep:04d}.png'), dpi=100)
 
     # Create graph from adjacency matrix
     #graph = nx.from_numpy_array(adj_matrix, create_using=nx.DiGraph())
@@ -195,9 +197,7 @@ def subsample_maxent(X, cv, num_samples):
 
 
 def plot_samples(indices, x, y, z, args):
-    """
-    Plots subsampled data based on input dimensions and settings.
-    """
+    """ Plot subsampled data based on input dimensions and settings. """
     plt.clf()
     plt.rcParams.update({'font.size': 10})
 
@@ -223,4 +223,4 @@ def plot_samples(indices, x, y, z, args):
         plt.ylim([-10, 10])
         plt.axis('equal')
 
-    plt.savefig(os.path.join(args.plot_dir, 'subsample_plot.png'), dpi=100, bbox_inches='tight')
+    plt.savefig(os.path.join(PLTDIR, 'subsample_plot.png'), dpi=100, bbox_inches='tight')
