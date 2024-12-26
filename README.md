@@ -1,9 +1,10 @@
 # SICKLE 
 
-SICKLE = Sparse Intelligent Curation framework for Knowledge-driven Learning Efficiency 
+SICKLE = Sparse Intelligent data Curation framework for Knowledge-driven Learning Efficiency 
 
 SICKLE is a tool to "separate the wheat from the chaff", that is, to extract 
-data with the probabilistically highest information content.
+data with the probabilistically highest information content to improve the 
+cost of training large models.
 
 # Subsampling
 
