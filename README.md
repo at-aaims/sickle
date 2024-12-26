@@ -1,3 +1,7 @@
+# SICKLE 
+
+SICKLE = Sparse Intelligent Curation for Knowledge-driven Learning Efficiency 
+"Separating the wheat from the chaff"
 
 # Subsampling
 
