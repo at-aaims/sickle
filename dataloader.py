@@ -7,7 +7,6 @@ import re
 
 from constants import *
 from helpers import get_1Dgrid, get_data_memmap
-from stream import compute_stream_function
 # We do this so that users who are not using OpenFOAM need not install fluidfoam
 try: 
     from fluidfoam import readscalar, readvector, readforce
@@ -68,9 +67,6 @@ class DataLoaderOF(DataLoader):
         if target == 'drag':
             params['drag'] = self.load_forces()[1].reshape(-1, 1)
 
-        if cv == 'stream': 
-            params['stream'] = compute_stream_function(u, v, wz)
-
         if self.dims == 2:
             X = np.stack((u, v), axis=-1)
         elif self.dims == 3:
@@ -78,7 +74,7 @@ class DataLoaderOF(DataLoader):
         else:
             raise ValueError("dims must be either 2 or 3")
         Y = params[target]
-        cv = params[cv]
+        cv = params[cv[0]]
 
         return X, Y, cv
 

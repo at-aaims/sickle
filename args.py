@@ -2,7 +2,7 @@ import argparse
 import os
 import yaml
 
-from constants import FPT_LOCAL, FPT_GLOBAL
+from constants import FPT_LOCAL, FPT_GLOBAL, SNPDIR
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 archs = ['fcn', 'fcn_sst', 'lstm', 'transformer']
@@ -56,6 +56,7 @@ parser.add_argument("--Lh", type=float, default=1.0, required=False, help="Horiz
 parser.add_argument("--Lv", type=float, default=0.5, required=False, help="Vertical length of full box")
 parser.add_argument("--input_vars", nargs="+", type=str, default=['u' 'v' 'w' 'r'], help="variable name(s) for input to model: 'r' 'u' 'v' 'w'. It can be single or multiple vars. NOTE: change --in_channels accordingly.")
 parser.add_argument("--output_vars", nargs="+", type=str, default=['p' 'pv'], help="variable name(s) for model output: 'p' 'pv'. It can be single or multiple vars. NOTE: change --out_channels accordingly.")
+parser.add_argument('-o', '--output_dir', type=str, default=SNPDIR, help='output directory')
 parser.add_argument("--saveData", default=False, action='store_true', help="Save data.")
 
 args = parser.parse_args()
