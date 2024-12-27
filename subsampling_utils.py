@@ -224,3 +224,4 @@ def plot_samples(indices, x, y, z, args):
         plt.axis('equal')
 
     plt.savefig(os.path.join(PLTDIR, 'subsample_plot.png'), dpi=100, bbox_inches='tight')
+    plt.close()

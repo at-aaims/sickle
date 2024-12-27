@@ -26,9 +26,9 @@ python -u train-pt-ddp.py --epochs 10 --patience 100 --dims 3 --dtype sst-binary
 
 # Tests
 
-python subsample_random.py --path ../DataSiftML/data/cylinder --target drag -ns 540 -cv p --target drag
+python subsample.py -m random --path ../DataSiftML/data/cylinder --target drag -ns 540
 
-python subsample_maxent.py --path ../DataSiftML/data/cylinder --target drag -ns 540 -cv p --target drag
+python subsample.py -m maxent --path ../DataSiftML/data/cylinder --target drag -ns 540 -cv p
 
 
 # Tests on Frontier

@@ -2,11 +2,12 @@ import argparse
 import os
 import yaml
 
-from constants import FPT_LOCAL, FPT_GLOBAL, SNPDIR
+from constants import FPT_LOCAL, FPT_GLOBAL, SNPDIR, PLTDIR
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 archs = ['fcn', 'fcn_sst', 'lstm', 'transformer']
-parser.add_argument("method", choices=["maxent", "random"], help='subsample method')
+choices = ["maxent", "random"]
+parser.add_argument('-m', '--method', choices=choices, default='maxent', help='subsample method')
 parser.add_argument('--arch', type=str, default='fcn_sst', choices=archs, help='Type of neural network architecture')
 parser.add_argument('-b', '--batch', type=int, default=32, help='batch size')
 parser.add_argument('-cv', '--cluster_var', nargs="+", type=str, default='pv', choices=['p', 'pv', 'wz', 'pwz', 'stream'], help='cluster variable')
@@ -22,8 +23,6 @@ parser.add_argument('--path', type=str, default='./data', help='path to data')
 parser.add_argument('--patience', type=int, default=5, help='number epochs for early stopping')
 parser.add_argument('--plot', action='store_true', default=False, help='show plots')
 parser.add_argument('--noseed', action='store_true', default=False, help='don\'t use random number seed')
-choices = ['random', 'random-weighted', 'silhouette', 'proportional', 'equal', 'equalpercentage']
-parser.add_argument('--subsample', type=str, default='proportional', choices=choices, help='sampling strategy')
 choices = ['StandardScaler', 'MinMaxScaler', 'PowerTransformer', 'None']
 parser.add_argument('--xscaler', type=str, default='MinMaxScaler', choices=choices, help='scaler function')
 parser.add_argument('--yscaler', type=str, default='StandardScaler', choices=choices, help='scaler function')
@@ -56,7 +55,8 @@ parser.add_argument("--Lh", type=float, default=1.0, required=False, help="Horiz
 parser.add_argument("--Lv", type=float, default=0.5, required=False, help="Vertical length of full box")
 parser.add_argument("--input_vars", nargs="+", type=str, default=['u' 'v' 'w' 'r'], help="variable name(s) for input to model: 'r' 'u' 'v' 'w'. It can be single or multiple vars. NOTE: change --in_channels accordingly.")
 parser.add_argument("--output_vars", nargs="+", type=str, default=['p' 'pv'], help="variable name(s) for model output: 'p' 'pv'. It can be single or multiple vars. NOTE: change --out_channels accordingly.")
-parser.add_argument('-o', '--output_dir', type=str, default=SNPDIR, help='output directory')
+parser.add_argument('--output_dir', type=str, default=SNPDIR, help='output directory')
+parser.add_argument('--plot_dir', type=str, default=PLTDIR, help='plots directory')
 parser.add_argument("--saveData", default=False, action='store_true', help="Save data.")
 
 args = parser.parse_args()

@@ -151,7 +151,7 @@ def get_data_memmap(loadpath, nx, ny, nz, nxsl, nysl, nzsl, nxoffset, nyoffset, 
     # print(f'Shape of the sub-cube: {datacube.shape}')
     return datacube
 
-# ## Check data
+# Check data
 def check_data(loadpath, nx, ny, nz, nbyte):
   # print('Checking data file...')
   # read in test binary and check number of samples
@@ -169,3 +169,7 @@ def check_data(loadpath, nx, ny, nz, nbyte):
       raise Exception(f'Number of samples counted != actual')
   binary.close()
 
+def check_and_create_dirs(directory):
+    """ Checks if a directory exists, and creates it if it doesn't.  """
+    if not os.path.exists(directory):
+        os.makedirs(directory)

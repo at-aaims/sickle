@@ -3,6 +3,7 @@ import os
 import sys
 
 from args import args 
+from helpers import check_and_create_dirs
 from subsampling_utils import *
 from constants import FPT_GLOBAL
 
@@ -33,6 +34,7 @@ if __name__ == "__main__":
 
     # Ensure required directories exist
     check_and_create_dirs(args.output_dir)
+    check_and_create_dirs(args.plot_dir)
 
     # Load the data
     X, Y, cv, x, y, z = load_data(args.path, args)
