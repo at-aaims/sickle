@@ -67,7 +67,8 @@ if rank == 0:
     # Flatten results
     all_results = [item for sublist in all_results for item in sublist]
     outfile = os.path.join(args.output_dir, 'subsampled_results.npz')
-    np.savez(outfile, results=all_results)
+    #np.savez(outfile, results=all_results) # this will crash on some datasets
+    np.savez(outfile, results=np.array(all_results, dtype=object))
     print(f"Results saved to {outfile}")
 
 MPI.Finalize()

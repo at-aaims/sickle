@@ -12,7 +12,7 @@ Login to Frontier
 
     source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
 
-    OPENBLAS_NUM_THREADS=4 python subsample_maxent_seq.py --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
+    OPENBLAS_NUM_THREADS=4 python subsample.py --method maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
 
 # Training
 
@@ -22,10 +22,9 @@ Login to Frontier
 
 See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
 
-# Tests on laptop
+# Tests on laptop - random and maxent
 
     python subsample.py -m random --path ../DataSiftML/data/cylinder --target drag -ns 540
-
     python subsample.py -m maxent --path ../DataSiftML/data/cylinder --target drag -ns 540 -cv p
 
 # Tests on Frontier
@@ -36,9 +35,13 @@ See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
 
 # Parallel tests on Frontier
 
-    srun -n 4 python subsample-mpi.py -m random --path ../datasiftml/data --target drag -ns 540
+    # OpenFOAM dataset - random and maxent
 
+    srun -n 4 python -u subsample-mpi.py -m random --path ../datasiftml/data --target drag -ns 540
     srun -n 4 python -u subsample-mpi.py -m maxent --path ../datasiftml/data --target drag -ns 540
+
+    # debk dataset
+    OPENBLAS_NUM_THREADS=4 srun -n 4 python -u subsample-mpi.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
 
 # To compare MaxEnt methods with Phase-space-sampling approach
 
