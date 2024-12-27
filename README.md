@@ -59,14 +59,15 @@ Then run:
 
     python uips-eval.py
 
-This will output two png images: 
+This will output three `.png` images: 
 
     scatter_maxent_downsampled.png  
+    scatter_random_downsampled.png  
     scatter_phasespace_downsampled.png
 
 These two images can be compared to compare the two methods. 
 
-To cluster on 2D, change the following line in algorithms.py from:
+To cluster on 2D, change the following line in `algorithms.py` from:
 
     data = cv[timestep, :].reshape(-1, 1)
 
