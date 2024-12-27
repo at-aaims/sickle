@@ -67,6 +67,9 @@ This will output two png images:
 These two images can be compared to compare the two methods. 
 
 To cluster on 2D, change the following line in algorithms.py from:
+
     data = cv[timestep, :].reshape(-1, 1)
+
 to:
+
     data = cv[timestep, :]
