@@ -2,7 +2,7 @@ import argparse
 import os
 import yaml
 
-from constants import FPT_LOCAL, FPT_GLOBAL, SNPDIR, PLTDIR
+from constants import FieldPredictionType
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 archs = ['fcn', 'fcn_sst', 'lstm', 'transformer']
@@ -55,13 +55,13 @@ parser.add_argument("--Lh", type=float, default=1.0, required=False, help="Horiz
 parser.add_argument("--Lv", type=float, default=0.5, required=False, help="Vertical length of full box")
 parser.add_argument("--input_vars", nargs="+", type=str, default=['u' 'v' 'w' 'r'], help="variable name(s) for input to model: 'r' 'u' 'v' 'w'. It can be single or multiple vars. NOTE: change --in_channels accordingly.")
 parser.add_argument("--output_vars", nargs="+", type=str, default=['p' 'pv'], help="variable name(s) for model output: 'p' 'pv'. It can be single or multiple vars. NOTE: change --out_channels accordingly.")
-parser.add_argument('--output_dir', type=str, default=SNPDIR, help='output directory')
-parser.add_argument('--plot_dir', type=str, default=PLTDIR, help='plots directory')
+parser.add_argument('--output_dir', type=str, default='./snapshots', help='output directory')
+parser.add_argument('--plot_dir', type=str, default='./plots', help='plots directory')
 parser.add_argument("--saveData", default=False, action='store_true', help="Save data.")
 
 args = parser.parse_args()
 
-args.field_prediction_type = FPT_GLOBAL if args.target == 'drag' else FPT_LOCAL
+args.field_prediction_type = FieldPredictionType.GLOBAL if args.target == 'drag' else FieldPredictionType.LOCAL
 
 if args.arch == 'lstm' or args.arch == 'transformer': 
     args.sequence = True

@@ -10,8 +10,9 @@ from sklearn.model_selection import train_test_split
 
 import dataloader
 from args import args
-from constants import *
-from helpers import tune, scale, print_stats, plot_histograms, plot_ML_outputs, plot_learning_curve
+from constants import FieldPredictionType
+from helpers import tune, scale, print_stats
+from plotting import plot_histograms, plot_ML_outputs, plot_learning_curve
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
@@ -21,7 +22,7 @@ fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_sampl
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 outfilename = f"subsampled_{fileprefix}.npz"
-data = np.load(os.path.join(SNPDIR, outfilename))
+data = np.load(os.path.join(args.output_dir, outfilename))
 X, Y, target = data['X'], data['Y'], data['target']
 
 print(X.shape, Y.shape, len(Y.shape))
@@ -33,7 +34,7 @@ if args.sequence:
     print(X.shape, Y.shape)
     num_sequences, sequence_length, num_features = X.shape
     num_samples = X.shape[0]
-    if args.field_prediction_type == FPT_GLOBAL:
+    if args.field_prediction_type == FieldPredictionType.GLOBAL:
         Y = Y.reshape(num_sequences, sequence_length)
 else:
     Y = np.squeeze(Y)
@@ -138,7 +139,7 @@ def train_model(model, optimizer, criterion, X_train, Y_train, X_test, Y_test, a
 
 train_loss_history, val_loss_history = train_model(model, optimizer, criterion, X_train, Y_train, X_test, Y_test, args)
 plot_learning_curve(train_loss_history, val_loss_history)
-plt.savefig(os.path.join(PLTDIR, f'{fileprefix}_{args.subsample}_ML_loss-curves.png'), dpi=100, bbox_inches='tight')
+plt.savefig(os.path.join(args.plot_dir, f'{fileprefix}_{args.subsample}_ML_loss-curves.png'), dpi=100, bbox_inches='tight')
 
 # Evaluate the model
 model.eval()
@@ -147,13 +148,13 @@ with torch.no_grad():
     test_loss = criterion(Y_test_ML, Y_test)
 print(f'Loss ({fileprefix}): {test_loss.item():.04f}')
 plot_ML_outputs(Y_test_ML[0, :].cpu().numpy().reshape(-1, 1), Y_test[0, :].cpu().numpy().reshape(-1, 1))
-plt.savefig(os.path.join(PLTDIR, f'{fileprefix}_{args.subsample}_ML_output.png'), dpi=100, bbox_inches='tight')
+plt.savefig(os.path.join(args.plot_dir, f'{fileprefix}_{args.subsample}_ML_output.png'), dpi=100, bbox_inches='tight')
 
 # Save model
 model_path = f"models/{args.arch}"
 if not os.path.exists(model_path): os.makedirs(model_path)
 torch.save(model.state_dict(), f"{model_path}/{fileprefix}_model.pth")
-np.savez(os.path.join(SNPDIR, f"{fileprefix}_test.npz"), X_test=X_test.cpu().numpy(), \
+np.savez(os.path.join(args.output_dir, f"{fileprefix}_test.npz"), X_test=X_test.cpu().numpy(), \
                                            Y_test=Y_test.cpu().numpy(), \
                                            X_train=X_train.cpu().numpy(), \
                                            Y_train=Y_train.cpu().numpy())

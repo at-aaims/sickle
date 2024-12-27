@@ -87,7 +87,7 @@ def main():
     # Preload data
     fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
     outfilename = f"subsampled_{fileprefix}.npz"
-    data = np.load(os.path.join(SNPDIR, outfilename))
+    data = np.load(os.path.join(args.output_dir, outfilename))
     X, Y, target = data['X'], data['Y'], data['target']
 
     if args.sequence:

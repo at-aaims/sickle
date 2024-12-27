@@ -6,14 +6,13 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 
 from args import args
-from constants import SNPDIR, PLTDIR
 from matplotlib.colors import LinearSegmentedColormap
 
 # Load data
 data = np.load('snapshots/subsampled.npz')
 x, y = data['x'], data['y']
 
-data = np.load(os.path.join(SNPDIR, 'test_maxent.npz'))
+data = np.load(os.path.join(args.output_dir, 'test_maxent.npz'))
 X_test, Y_test, X_train, Y_train = (
     torch.tensor(data['X_test'], dtype=torch.float32),
     torch.tensor(data['Y_test'], dtype=torch.float32),
@@ -56,4 +55,4 @@ for t in range(X_test.shape[0]):
     plt.axis('equal') 
     cbar = plt.colorbar(ticks=np.linspace(emin, emax, 5))
     cbar.set_label(r'L1 error')
-    plt.savefig(os.path.join(PLTDIR, f'errors_{t:04d}_random.png'), dpi=100)
+    plt.savefig(os.path.join(args.plot_dir, f'errors_{t:04d}_random.png'), dpi=100)

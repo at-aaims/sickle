@@ -51,65 +51,6 @@ def load(*args, **kwargs):
 def savez(*args, **kwargs):
     np.save(*args, **kwargs)
 
-def plot_histograms(X_train, X_test, Y_train, Y_test):
-    bins = 50
-    fig, ax = plt.subplots(1, 3, figsize=(15, 5))  
-    ax[0].hist(X_train[:,0], bins=bins, alpha=0.8, edgecolor='lightblue', color='lightblue')
-    ax[0].hist(X_test[:,0], bins=bins, alpha=0.5, edgecolor='red', color='red')
-    ax[0].set_title('Histogram of X[0]')
-    ax[1].hist(X_train[:,1], bins=bins, alpha=0.8, edgecolor='lightblue', color='lightblue')
-    ax[1].hist(X_test[:,1], bins=bins, alpha=0.5, edgecolor='red', color='red')
-    ax[1].set_title('Histogram of X[1]')
-    ax[2].hist(Y_train, bins=bins, alpha=0.8, edgecolor='lightblue', color='lightblue')
-    ax[2].hist(Y_test, bins=bins, alpha=0.5, edgecolor='red', color='red')
-    ax[2].set_title('Histogram of Y')
-    plt.tight_layout()
-    plt.show()
-
-def plot_learning_curve(train_loss_history, val_loss_history):
-    plt.figure(figsize=(10,5))
-    plt.rcParams.update({'font.size': 18})
-    plt.title('Learning curve')
-    plt.plot(train_loss_history, label='training')
-    plt.plot(val_loss_history, label='validation',alpha=0.5)
-    plt.yscale('log')
-    plt.xlabel('Epoch'); plt.ylabel(r'Loss ($mse$)')
-    plt.legend(frameon=False);
-    # plt.savefig(os.path.join(PLTDIR, f'ML_loss-curves.png'), dpi=100)
-
-def plot_ML_outputs(Y_test_ML, Y_test):
-    print(f"Plotting data: {Y_test_ML.shape}, {Y_test.shape}")
-    nvar = Y_test.shape[1] # num variables in Y
-    plt.clf()
-    plt.rcParams.update({'font.size': 15})
-
-    # Calculate the number of rows and columns for the subplots
-    ncols = 2  # Set number of columns (you can adjust this as needed)
-    nrows = int(np.ceil(nvar / ncols))  # Calculate number of rows needed
-    fig, axs = plt.subplots(nrows, ncols, figsize=(15, 6 * nrows / 2), sharex=True, facecolor="1")
-    axs = axs.ravel()  # Flatten the axs array for easy indexing
-    # Plot the variables
-    for i in range(nvar):
-        axs[i].scatter(Y_test[:, i], Y_test_ML[:, i], s=20)
-        # Calculate the min and max for the current variable
-        min_val = min(Y_test[:, i].min(), Y_test_ML[:, i].min())
-        max_val = max(Y_test[:, i].max(), Y_test_ML[:, i].max())
-        # Plot the y = x line based on the min and max values
-        axs[i].plot([min_val, max_val], [min_val, max_val], '--', color='k')
-    
-    # Set labels on the appropriate subplots
-    for i in range(nrows):
-        axs[i * ncols].set_ylabel('Predicted')
-    for i in range(min(ncols, nvar)):
-        axs[-ncols + i].set_xlabel('True')
-    
-    # Hide any unused subplots
-    for i in range(nvar, nrows * ncols):
-        axs[i].set_visible(False)
-    
-    plt.tight_layout()
-    # plt.savefig(os.path.join(PLTDIR, f'ML_output.png'), dpi=100)
-
 # # Function to compute grid coordinates for subdomain/box
 def get_1Dgrid(Lh, nx, nxoffset, nxsl, nxskip):
     '''
@@ -151,7 +92,6 @@ def get_data_memmap(loadpath, nx, ny, nz, nxsl, nysl, nzsl, nxoffset, nyoffset, 
     # print(f'Shape of the sub-cube: {datacube.shape}')
     return datacube
 
-# Check data
 def check_data(loadpath, nx, ny, nz, nbyte):
   # print('Checking data file...')
   # read in test binary and check number of samples
@@ -173,3 +113,22 @@ def check_and_create_dirs(directory):
     """ Checks if a directory exists, and creates it if it doesn't.  """
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+def load_data(path, args):
+    """ Loads data based on the specified type in args.  """
+    from dataloader import DataLoaderCSV, DataLoaderNPZ, DataLoaderSSTBinary, DataLoaderOF
+
+    if args.dtype == "csv":
+        dl = DataLoaderCSV(args.path, dims=args.dims)
+    elif args.dtype == "npz":
+        dl = DataLoaderNPZ(args.path)
+    elif args.dtype == "sst-binary":
+        dl = DataLoaderSSTBinary(args)
+    else:
+        dl = DataLoaderOF(args.path, dims=args.dims)
+
+    x, y, z = dl.load_xyz()
+    X, Y, cv = dl.load_multiple_timesteps(
+        args.write_interval, args.num_timesteps, target=args.target, cv=args.cluster_var
+    )
+    return X, Y, cv, x, y, z

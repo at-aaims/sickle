@@ -6,33 +6,7 @@ import scipy.stats
 
 from sklearn.cluster import KMeans
 from args import args
-from constants import PLTDIR
-
-
-def check_and_create_dirs(directory):
-    """ Checks if a directory exists, and creates it if it doesn't.  """
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-
-def load_data(path, args):
-    """ Loads data based on the specified type in args.  """
-    from dataloader import DataLoaderCSV, DataLoaderNPZ, DataLoaderSSTBinary, DataLoaderOF
-
-    if args.dtype == "csv":
-        dl = DataLoaderCSV(args.path, dims=args.dims)
-    elif args.dtype == "npz":
-        dl = DataLoaderNPZ(args.path)
-    elif args.dtype == "sst-binary":
-        dl = DataLoaderSSTBinary(args)
-    else:
-        dl = DataLoaderOF(args.path, dims=args.dims)
-
-    x, y, z = dl.load_xyz()
-    X, Y, cv = dl.load_multiple_timesteps(
-        args.write_interval, args.num_timesteps, target=args.target, cv=args.cluster_var
-    )
-    return X, Y, cv, x, y, z
+from plotting import plot_adjacency_matrix
 
 
 def subsample_random(X, num_samples, timestep, seed=[0]):
@@ -146,26 +120,12 @@ def compute_entropy(clusters, timestep=0, num_bins=50):
 
     # Plot adjacency matrix if required
     if args.plot:
-        plt.clf()
-        plt.rcParams.update({'font.size': 18})
-        plt.figure(figsize=(12, 10), facecolor='1')
-        ticks = np.arange(n_dists)
-        plt.xticks(ticks)
-        plt.yticks(ticks)
-        plt.xlabel('Cluster number')
-        plt.ylabel('Cluster number')
-        plt.imshow(adj_matrix, cmap='inferno')
-        cbar = plt.colorbar(); cbar.set_label(r'relative entropy, $D$')
-        plt.axis('equal')
-        plt.savefig(os.path.join(PLTDIR, f'adj_matrix_{timestep:04d}.png'), dpi=100)
-
-    # Create graph from adjacency matrix
-    #graph = nx.from_numpy_array(adj_matrix, create_using=nx.DiGraph())
+        plot_adjacency_matrix(adj_matrix, n_dists, timestep)
 
     # Compute strengths
     in_strengths = np.sum(adj_matrix, axis=0)
-    out_strengths = np.sum(adj_matrix, axis=1)
     print("in-strengths:", in_strengths)
+    out_strengths = np.sum(adj_matrix, axis=1)
     print("out-strengths:", out_strengths)
 
     return in_strengths
@@ -194,34 +154,3 @@ def subsample_maxent(X, cv, num_samples):
     #indices2 = np.copy(indices)
 
     return np.array(indices)
-
-
-def plot_samples(indices, x, y, z, args):
-    """ Plot subsampled data based on input dimensions and settings. """
-    plt.clf()
-    plt.rcParams.update({'font.size': 10})
-
-    if args.dims == 3:
-        fig = plt.figure(figsize=(10, 8))
-        ax = plt.subplot(111, projection='3d')
-        ax.view_init(elev=20., azim=-35)
-
-        if args.dtype in ['npz', 'sst-binary']:
-            x_indices, y_indices, z_indices = np.unravel_index(
-                indices, (x.shape[0], y.shape[0], z.shape[0])
-            )
-            ax.scatter(
-                x[x_indices], z[z_indices], y[y_indices], c='k', s=2, alpha=0.5
-            )
-        else:
-            ax.scatter(x[indices], y[indices], z[indices], c='k', s=2, alpha=0.5)
-
-    else:
-        plt.figure(figsize=(9, 2))
-        plt.scatter(x[indices], y[indices], c='k', s=2, alpha=0.5)
-        plt.xlim([-25, 65])
-        plt.ylim([-10, 10])
-        plt.axis('equal')
-
-    plt.savefig(os.path.join(PLTDIR, 'subsample_plot.png'), dpi=100, bbox_inches='tight')
-    plt.close()

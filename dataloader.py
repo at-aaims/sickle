@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import re
 
-from constants import *
+from constants import FieldPredictionType
 from helpers import get_1Dgrid, get_data_memmap
 # We do this so that users who are not using OpenFOAM need not install fluidfoam
 try: 
@@ -295,7 +295,7 @@ def create_sequences_from_csv(path, sequence_length):
     return np.array(sequences), np.array(labels)
 
 
-def create_sequences(X, Y, window_size=3, overlap=2, field_prediction_type=FPT_GLOBAL):
+def create_sequences(X, Y, window_size=3, overlap=2, field_prediction_type=FieldPredictionType.GLOBAL):
     """ Create time sequences of a given window size from the input arrays X and Y with specified overlap """
     nt, nsamples, nvars = X.shape
     stride = window_size - overlap
@@ -303,7 +303,7 @@ def create_sequences(X, Y, window_size=3, overlap=2, field_prediction_type=FPT_G
     num_sequences = (nt - window_size) // stride + 1
 
     X_sequences = np.zeros((num_sequences, window_size, nsamples * nvars))
-    if field_prediction_type == FPT_GLOBAL:
+    if field_prediction_type == FieldPredictionType.GLOBAL:
         Y_sequences = np.zeros((num_sequences, window_size))
     else:
         Y_sequences = np.zeros((num_sequences, window_size, nsamples))
@@ -311,7 +311,7 @@ def create_sequences(X, Y, window_size=3, overlap=2, field_prediction_type=FPT_G
     for i in range(num_sequences):
         start_index = i * stride
         X_sequences[i] = X[start_index:start_index + window_size].reshape(window_size, nsamples * nvars)
-        if field_prediction_type == FPT_GLOBAL:
+        if field_prediction_type == FieldPredictionType.GLOBAL:
             Y_sequences[i] = Y[start_index:start_index + window_size].flatten()
         else:
             Y_sequences[i] = Y[start_index:start_index + window_size].reshape(window_size, -1)

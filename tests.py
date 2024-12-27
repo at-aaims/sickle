@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from constants import SNPDIR
+from args import args
 
 def explore_npz(file_path):
     """
@@ -38,6 +38,6 @@ def explore_npz(file_path):
 
 
 if __name__ == "__main__":
-    explore_npz(os.path.join(SNPDIR, "subsampled_random.npz"))
-    explore_npz(os.path.join(SNPDIR, "subsampled_maxent.npz"))
+    explore_npz(os.path.join(args.output_dir, "subsampled_random.npz"))
+    explore_npz(os.path.join(args.output_dir, "subsampled_maxent.npz"))
 
