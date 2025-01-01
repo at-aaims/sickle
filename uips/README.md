@@ -13,6 +13,10 @@ Note: run following from `uips` directory
  
     python subsample.py -i input4D
 
+Or in parallel:
+
+    srun -np 4 python subsample.py -i input2D
+
 This will generate the following files with downsampled results for 1k, 10k, and 100k samples:
 
     downSampledData_100000_it0.npz  downSampledData_10000_it0.npz  downSampledData_1000_it0.npz  scaler.npz
