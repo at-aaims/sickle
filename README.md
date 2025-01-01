@@ -43,39 +43,6 @@ See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
     # debk dataset
     OPENBLAS_NUM_THREADS=4 srun -n 4 python -u subsample-mpi.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
 
-# To compare MaxEnt methods with Phase-space-sampling approach
-
-From the [Phase-space-sampling repo](https://github.com/NREL/Phase-space-sampling), run
-
-    srun -np 4 python tests/main_from_input.py -i input2D
-
-This will output several files. The only one used now is:
-
-    downSampledData_1000_it1.npz
-
-copy this one to sickle repo. Also, copy `combustion2DToDownsampleSmall.npy` to the `data` directory in the sickle repo.
-
-Then run:
-
-    python uips-eval.py
-
-This will output three `.png` images: 
-
-    scatter_maxent_downsampled.png  
-    scatter_random_downsampled.png  
-    scatter_phasespace_downsampled.png
-
-These two images can be compared to compare the two methods. 
-
-To cluster on 2D, change the following line in `algorithms.py` from:
-
-    data = cv[timestep, :].reshape(-1, 1)
-
-to:
-
-    data = cv[timestep, :]
-
-
 # Uniform-in-phase-space testing
 
 See [uips/README.md](uips/README.md)
