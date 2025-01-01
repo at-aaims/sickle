@@ -74,3 +74,10 @@ To cluster on 2D, change the following line in `algorithms.py` from:
 to:
 
     data = cv[timestep, :]
+
+
+# Uniform-in-phase-space testing
+
+See [uips/README.md](uips/README.md)
+
+
