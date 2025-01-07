@@ -53,7 +53,9 @@ if __name__ == "__main__":
     Xout, Yout = subsample_data(X, Y, x, y, z, subsample_fn, args)
 
     # Save output
-    outfile = os.path.join(args.output_dir, 'subsampled_maxent.npz')
+    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+    outfilename = f"subsampled_{fileprefix}.npz"
+    outfile = os.path.join(args.output_dir, outfilename)
     np.savez(outfile, X=Xout, Y=Yout, x=x, y=y, z=z)
 
     print(f'Subsampled data saved to {outfile}')

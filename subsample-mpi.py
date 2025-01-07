@@ -66,7 +66,9 @@ all_results = comm.gather(local_results, root=0)
 if rank == 0:
     # Flatten results
     all_results = [item for sublist in all_results for item in sublist]
-    outfile = os.path.join(args.output_dir, 'subsampled_results.npz')
+    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+    outfilename = f"subsampled_{fileprefix}.npz"
+    outfile = os.path.join(args.output_dir, outfilename)
     #np.savez(outfile, results=all_results) # this will crash on some datasets
     np.savez(outfile, results=np.array(all_results, dtype=object))
     print(f"Results saved to {outfile}")

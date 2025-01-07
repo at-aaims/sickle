@@ -18,7 +18,7 @@ Login to Frontier
 
     module load cray-python/3.10.10 rocm
 
-    python -u train-pt-ddp.py --epochs 10 --patience 100 --dims 3 --dtype sst-binary --noseed -ns 10000 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 128 --window 5 --arch transformer
+    python -u train-ddp.py --epochs 10 --patience 100 --dims 3 --dtype sst-binary --noseed -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64 --window 2 --arch transformer
 
 See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
 
