@@ -6,6 +6,38 @@ from args import args
 from helpers import check_and_create_dirs, load_data
 from mpi4py import MPI
 
+def broadcast_large_array(data, comm, root=0):
+    """Broadcast large arrays by chunking."""
+    rank = comm.Get_rank()
+    
+    if rank == root:
+        shape = data.shape
+        dtype = data.dtype
+    else:
+        shape = None
+        dtype = None
+    
+    # Broadcast metadata
+    shape = comm.bcast(shape, root=root)
+    dtype = comm.bcast(dtype, root=root)
+    
+    if rank != root:
+        data = np.empty(shape, dtype=dtype)
+    
+    # Calculate safe chunk size
+    MAX_ELEMENTS = 2**30  # Safely below INT_MAX
+    total_elements = np.prod(shape)
+    
+    # Flatten array for chunking
+    flat_data = data.ravel()
+    
+    for i in range(0, total_elements, MAX_ELEMENTS):
+        end = min(i + MAX_ELEMENTS, total_elements)
+        chunk = flat_data[i:end] if rank == root else None
+        comm.Bcast([flat_data[i:end], MPI.DOUBLE], root=root)
+    
+    return data
+
 
 # Initialize MPI
 comm = MPI.COMM_WORLD
@@ -22,15 +54,27 @@ if rank == 0:
 
     # Save data for broadcasting to all ranks
     fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}"
-    data_bcast = {"X": X, "Y": Y, "cv": cv, "x": x, "y": y, "z": z, "fileprefix": fileprefix}
+    #data_bcast = {"X": X, "Y": Y, "cv": cv, "x": x, "y": y, "z": z, "fileprefix": fileprefix}
 
 else:
-    data_bcast = None
+    X = None
+    Y = None
+    cv = None
+    x = None
+    y = None
+    z = None
+    fileprefix = None
 
-# Broadcast data and extract vars
-data_bcast = comm.bcast(data_bcast, root=0)
+# Broadcast large arrays with chunking
+X = broadcast_large_array(X, comm) if rank == 0 else broadcast_large_array(None, comm)
+Y = broadcast_large_array(Y, comm) if rank == 0 else broadcast_large_array(None, comm)
 
-x, y, z, X, Y, cv, fileprefix = data_bcast['x'], data_bcast['y'], data_bcast['z'], data_bcast['X'], data_bcast['Y'], data_bcast['cv'], data_bcast['fileprefix']
+# Broadcast smaller arrays normally
+cv = comm.bcast(cv, root=0)
+x = comm.bcast(x, root=0)
+y = comm.bcast(y, root=0)
+z = comm.bcast(z, root=0)
+fileprefix = comm.bcast(fileprefix, root=0)
 
 comm.Barrier()  # Synchronize all processes
 
