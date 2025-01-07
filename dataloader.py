@@ -5,6 +5,8 @@ import os
 import pandas as pd
 import re
 
+from mpi4py import MPI
+
 from constants import FieldPredictionType
 from helpers import get_1Dgrid, get_data_memmap
 # We do this so that users who are not using OpenFOAM need not install fluidfoam
@@ -272,6 +274,84 @@ class DataLoaderSSTBinary(DataLoader):
                 # cv[j, :, i] = box.reshape(-1)
 
         return X, Y, cv
+
+
+def parallel_load_data(path, args):
+    # Initialize MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    print(f"Rank {rank} started, total ranks = {size}")
+
+    # Instantiate data loader
+    dl = DataLoaderSSTBinary(args)
+
+    # Load spatial grids (common to all ranks)
+    x, y, z = dl.load_xyz()
+
+    # Prepare file loading in parallel
+    path = os.path.dirname(args.path)
+    file_filter = '*_*'
+    file_names = glob.glob(os.path.join(path, file_filter))
+    file_names = [os.path.basename(f) for f in file_names]
+
+    # Extract time labels (shared across ranks)
+    t_labels = dl._extract_times(file_names)
+    num_timesteps = len(t_labels)
+
+    # Partition timesteps among MPI ranks
+    local_timesteps = np.array_split(t_labels, size)[rank]
+
+    # Prepare arrays
+    num_pts = dl.num_pts
+    X = np.zeros((len(local_timesteps), num_pts, len(args.input_vars)))
+    Y = np.zeros((len(local_timesteps), num_pts))
+    cv = np.zeros((len(local_timesteps), num_pts))
+
+    def load_var(var_list, target_array, label):
+        print(f"Rank {rank} loading {label} variables...")
+        for i, var in enumerate(var_list):
+            for j, ts in enumerate(local_timesteps):
+                file_path = os.path.join(path, f'{var}_{ts:0.6f}')
+                print(f'Rank {rank} loading file: {file_path}')
+                box = get_data_memmap(
+                    file_path, args.nx, args.ny, args.nz,
+                    args.nxsl, args.nysl, args.nzsl,
+                    args.nxoffset, args.nyoffset, args.nzoffset,
+                    args.nxskip, args.nyskip, args.nzskip
+                )
+
+                # Reshape box to 1D
+                reshaped_box = box.reshape(-1)
+
+                # Dynamically handle 2D or 3D target arrays
+                if len(target_array.shape) == 3:  # Multi-variable (3D)
+                    target_array[j, :, i] = reshaped_box
+                elif len(target_array.shape) == 2:  # Single-variable (2D)
+                    target_array[j, :] = reshaped_box
+                else:
+                    raise ValueError(f"Unsupported target array shape: {target_array.shape}")
+
+    # Load data in parallel
+    load_var(args.input_vars, X, "input")
+    load_var(args.output_vars, Y, "output")
+    load_var(args.cluster_var, cv, "cluster")
+
+    # Gather results from all ranks
+    X_all = comm.gather(X, root=0)
+    Y_all = comm.gather(Y, root=0)
+    cv_all = comm.gather(cv, root=0)
+
+    # Concatenate results on root
+    if rank == 0:
+        X_all = np.concatenate(X_all, axis=0)
+        Y_all = np.concatenate(Y_all, axis=0)
+        cv_all = np.concatenate(cv_all, axis=0)
+        print("Data loading complete.")
+        return X_all, Y_all, cv_all, x, y, z
+    else:
+        return None, None, None, None, None, None
 
 
 def create_sequences_from_csv(path, sequence_length):
