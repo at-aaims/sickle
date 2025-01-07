@@ -71,16 +71,25 @@ def parallel_load_data(path, args):
     load_var(args.output_vars, Y, "output")
     load_var(args.cluster_var, cv, "cluster")
 
-    # Gather results from all ranks
-    X_all = comm.gather(X, root=0)
-    Y_all = comm.gather(Y, root=0)
-    cv_all = comm.gather(cv, root=0)
+    # Debug shapes
+    print(f"Rank {rank}: X shape = {X.shape}, Y shape = {Y.shape}, cv shape = {cv.shape}")
 
-    # Concatenate results on root
+    # Ensure valid shapes for empty ranks
+    if len(local_timesteps) == 0:
+        X = np.zeros((0, num_pts, len(args.input_vars)))
+        Y = np.zeros((0, num_pts))
+        cv = np.zeros((0, num_pts))
+
+    # Gather as lists
+    X_all = comm.gather(X.tolist(), root=0)
+    Y_all = comm.gather(Y.tolist(), root=0)
+    cv_all = comm.gather(cv.tolist(), root=0)
+
+    # Concatenate at root
     if rank == 0:
-        X_all = np.concatenate(X_all, axis=0)
-        Y_all = np.concatenate(Y_all, axis=0)
-        cv_all = np.concatenate(cv_all, axis=0)
+        X_all = np.concatenate([np.array(x) for x in X_all], axis=0)
+        Y_all = np.concatenate([np.array(y) for y in Y_all], axis=0)
+        cv_all = np.concatenate([np.array(c) for c in cv_all], axis=0)
         print("Data loading complete.")
         return X_all, Y_all, cv_all, x, y, z
     else:
