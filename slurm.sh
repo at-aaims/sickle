@@ -12,6 +12,7 @@
 module load cray-python/3.10.10 
 module load rocm/5.7.1
 module load craype-accel-amd-gfx90a
+# NOTE: Activate your own env
 
 # Variables for DDP
 WORLD_SIZE=$((SLURM_NTASKS))
@@ -28,10 +29,10 @@ mkdir -p ${MIOPEN_USER_DB_PATH}
 
 echo "World Size: $WORLD_SIZE, Node Rank: $NODE_RANK, Master Addr: $MASTER_ADDR, Master Port: $MASTER_PORT"
 
-srun python -u train-pt-ddp-multinode.py \
+srun python -u train-ddp-multinode.py \
      --epochs 10 --patience 100 --dims 3 --dtype sst-binary \
-     --noseed -ns 10000 \
+     --noseed -ns 100 \
      --input_vars u v w r --output_vars p --cluster_var pv \
      --nx 514 --ny 512 --nz 256 --gravity z \
-     --nxsl 128 --nysl 128 --nzsl 128 \
-     --window 5 --arch transformer
+     --nxsl 128 --nysl 128 --nzsl 64 \
+     --window 2 --arch transformer

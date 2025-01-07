@@ -16,8 +16,8 @@ from constants import *
 from helpers import scale
 
 fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+outfilename = f"subsampled_{fileprefix}.npz"# Function to set up the distributed environment
 
-# Function to set up the distributed environment
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
@@ -45,7 +45,7 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
     # Initialize the model and move it to the appropriate device
     input_shape = X_train.shape[1:]
     output_shape = Y_train.shape[1:] if len(Y_train.shape) > 1 else 1
-    model_module = importlib.import_module('archs-pt.' + args.arch)
+    model_module = importlib.import_module('archs.' + args.arch)
     model = model_module.build_model(input_shape, output_shape, window=args.window).to(device)
 
     # Wrap the model with DistributedDataParallel
@@ -85,10 +85,8 @@ def main():
     world_size = torch.cuda.device_count()  # Total number of GPUs available
 
     # Preload data
-    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
-    outfilename = f"subsampled_{fileprefix}.npz"
     data = np.load(os.path.join(args.output_dir, outfilename))
-    X, Y, target = data['X'], data['Y'], data['target']
+    X, Y = data['X'], data['Y']
 
     if args.sequence:
         X, Y = dataloader.create_sequences(
