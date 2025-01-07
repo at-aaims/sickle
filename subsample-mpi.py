@@ -54,7 +54,6 @@ if rank == 0:
 
     # Save data for broadcasting to all ranks
     fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}"
-    #data_bcast = {"X": X, "Y": Y, "cv": cv, "x": x, "y": y, "z": z, "fileprefix": fileprefix}
 
 else:
     X = None
@@ -113,7 +112,6 @@ if rank == 0:
     fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
     outfilename = f"subsampled_{fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
-    #np.savez(outfile, results=all_results) # this will crash on some datasets
     np.savez(outfile, results=np.array(all_results, dtype=object))
     print(f"Results saved to {outfile}")
 
