@@ -32,7 +32,7 @@ parser.add_argument('--yscalefactor', type=float, default=3, help='scalefactor t
 parser.add_argument('--dtype', type=str, default='openfoam', choices=['openfoam', 'csv', 'npz', 'sst-binary'], help='data type')
 parser.add_argument('--test_frac', type=float, default=0.1, help='fraction of data to hold out for testing')
 parser.add_argument('--target', type=str, default='wz', choices=['drag', 'p', 'wz', 'tke'], help='training target')
-parser.add_argument('--time', type=str, default='1000', help='time step to analyze')
+parser.add_argument('--timesteps', nargs='+', type=float, default=None, help='Specific timesteps to load (e.g., --timesteps 28.04 29.24)')
 parser.add_argument('-s', '--snapshot', action='store_true', default=False, help='load snapshots/raw_data.npz instead of running dataloader')
 parser.add_argument('--sequence', action='store_true', default=False, help='aggregate individual time-steps into a sequence')
 parser.add_argument('-v', '--verbose', action='store_true', default=False, help='verbose output')

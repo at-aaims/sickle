@@ -222,13 +222,28 @@ class DataLoaderSSTBinary(DataLoader):
         self.path = os.path.dirname(self.path)
         file_names = glob.glob(os.path.join(self.path, file_filter))
         file_names = [os.path.basename(f) for f in file_names] 
-        print('files:', sorted(file_names))
+        print('Files:', sorted(file_names))
+
         x_labels = self.args.input_vars # ['u', 'v', 'w', 'r']
         y_labels = self.args.output_vars # ['p'] # pressure
         cv_labels = self.args.cluster_var # ['pv'] # potential vorticity
         t_labels = self._extract_times(file_names)
-        print('t_labels:', t_labels)
+        print('Available timesteps (t_labels):', t_labels)
         
+        if self.args.timesteps:
+            desired_timesteps = sorted(self.args.timesteps)
+            # Use a tolerance to handle floating point precision
+            tolerance = 1e-6
+            filtered_t_labels = []
+            for dt in desired_timesteps:
+                matches = [ts for ts in t_labels if abs(ts - dt) < tolerance]
+                if matches:
+                    filtered_t_labels.append(matches[0])
+                else:
+                    print(f"Warning: Timestep {dt} not found in the data.")
+            t_labels = filtered_t_labels
+            print('Filtered timesteps to load:', t_labels)
+
         num_timesteps = len(t_labels)
         num_pts = self.num_pts
         X = np.zeros((num_timesteps, num_pts, len(x_labels)))
