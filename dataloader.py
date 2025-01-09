@@ -5,6 +5,8 @@ import os
 import pandas as pd
 import re
 
+from mpi4py import MPI
+
 from constants import FieldPredictionType
 from helpers import get_1Dgrid, get_data_memmap
 # We do this so that users who are not using OpenFOAM need not install fluidfoam
