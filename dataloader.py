@@ -244,7 +244,7 @@ class DataLoaderSSTBinary(DataLoader):
                 box = get_data_memmap( path, self.args.nx, self.args.ny, self.args.nz, 
                                                   self.args.nxsl, self.args.nysl, self.args.nzsl, 
                                                   self.args.nxoffset, self.args.nyoffset, self.args.nzoffset, 
-                                                  self.args.nxskip, self.args.nyskip, self.args.nzskip)
+                                                  self.args.nxskip, self.args.nyskip, self.args.nzskip, self.args.nbytes)
                 X[j, :, i] = box.reshape(-1)
 
         # Read neural net outputs / targets
@@ -256,7 +256,7 @@ class DataLoaderSSTBinary(DataLoader):
                 box = get_data_memmap( path, self.args.nx, self.args.ny, self.args.nz, 
                                                   self.args.nxsl, self.args.nysl, self.args.nzsl, 
                                                   self.args.nxoffset, self.args.nyoffset, self.args.nzoffset, 
-                                                  self.args.nxskip, self.args.nyskip, self.args.nzskip)
+                                                  self.args.nxskip, self.args.nyskip, self.args.nzskip, self.args.nbytes)
                 Y[j, :] = box.reshape(-1)
                 # Y[j, :, i] = box.reshape(-1)
 
@@ -269,7 +269,7 @@ class DataLoaderSSTBinary(DataLoader):
                 box = get_data_memmap( path, self.args.nx, self.args.ny, self.args.nz, 
                                                   self.args.nxsl, self.args.nysl, self.args.nzsl, 
                                                   self.args.nxoffset, self.args.nyoffset, self.args.nzoffset, 
-                                                  self.args.nxskip, self.args.nyskip, self.args.nzskip)
+                                                  self.args.nxskip, self.args.nyskip, self.args.nzskip, self.args.nbytes)
                 cv[j, :] = box.reshape(-1)
                 # cv[j, :, i] = box.reshape(-1)
 
