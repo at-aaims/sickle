@@ -6,7 +6,7 @@ from constants import FieldPredictionType
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 archs = ['fcn', 'fcn_sst', 'lstm', 'transformer']
-choices = ["maxent", "random"]
+choices = ["maxent", "random", "full"]
 parser.add_argument('-m', '--method', choices=choices, default='maxent', help='subsample method')
 parser.add_argument('--arch', type=str, default='fcn_sst', choices=archs, help='Type of neural network architecture')
 parser.add_argument('-b', '--batch', type=int, default=32, help='batch size')
@@ -31,7 +31,7 @@ parser.add_argument('--yscaler', type=str, default='StandardScaler', choices=cho
 parser.add_argument('--yscalefactor', type=float, default=3, help='scalefactor to divide target by before training')
 parser.add_argument('--dtype', type=str, default='openfoam', choices=['openfoam', 'csv', 'npz', 'sst-binary'], help='data type')
 parser.add_argument('--test_frac', type=float, default=0.1, help='fraction of data to hold out for testing')
-parser.add_argument('--target', type=str, default='wz', choices=['drag', 'p', 'wz', 'tke'], help='training target')
+parser.add_argument('--target', type=str, default='wz', choices=['drag', 'p', 'p_full', 'wz', 'tke'], help='training target')
 parser.add_argument('--timesteps', nargs='+', type=float, default=None, help='Specific timesteps to load (e.g., --timesteps 28.04 29.24)')
 parser.add_argument('-s', '--snapshot', action='store_true', default=False, help='load snapshots/raw_data.npz instead of running dataloader')
 parser.add_argument('--sequence', action='store_true', default=False, help='aggregate individual time-steps into a sequence')
@@ -63,7 +63,13 @@ parser.add_argument("--saveData", default=False, action='store_true', help="Save
 
 args = parser.parse_args()
 
-args.field_prediction_type = FieldPredictionType.GLOBAL if args.target == 'drag' else FieldPredictionType.LOCAL
+# args.field_prediction_type = FieldPredictionType.GLOBAL if args.target == 'drag' else FieldPredictionType.LOCAL
+if args.target == 'drag':
+    args.field_prediction_type = FieldPredictionType.GLOBAL
+elif args.target == 'p_full':
+    args.field_prediction_type = FieldPredictionType.FULL
+else:
+    args.field_prediction_type = FieldPredictionType.LOCAL
 
 if args.arch == 'lstm' or args.arch == 'transformer': 
     args.sequence = True

@@ -247,7 +247,7 @@ class DataLoaderSSTBinary(DataLoader):
         num_timesteps = len(t_labels)
         num_pts = self.num_pts
         X = np.zeros((num_timesteps, num_pts, len(x_labels)))
-        Y = np.zeros((num_timesteps, num_pts)) #, len(y_labels)))
+        Y = np.zeros((num_timesteps, num_pts, len(y_labels)))
         cv = np.zeros((num_timesteps, num_pts)) #, len(cv_labels)))
 
         # Read neural net inputs / observations
@@ -272,8 +272,8 @@ class DataLoaderSSTBinary(DataLoader):
                                                   self.args.nxsl, self.args.nysl, self.args.nzsl, 
                                                   self.args.nxoffset, self.args.nyoffset, self.args.nzoffset, 
                                                   self.args.nxskip, self.args.nyskip, self.args.nzskip, self.args.nbytes)
-                Y[j, :] = box.reshape(-1)
-                # Y[j, :, i] = box.reshape(-1)
+                # Y[j, :] = box.reshape(-1)
+                Y[j, :, i] = box.reshape(-1)
 
         # Read cluster variable for MaxEnt analysis
         print("Loading cluster vars...")
