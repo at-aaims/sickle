@@ -12,13 +12,13 @@ Login to Frontier
 
     source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
 
-    OPENBLAS_NUM_THREADS=4 python subsample.py --method maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
+    OPENBLAS_NUM_THREADS=4 python subsample.py --method maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 10000 --input_vars u v w r --target p_full --output_vars p pv --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 32 --nysl 32 --nzsl 32 --window 2
 
 # Training
 
     module load cray-python/3.10.10 rocm
 
-    python -u train-ddp.py --epochs 10 --patience 100 --dims 3 --dtype sst-binary --noseed -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64 --window 2 --arch transformer
+    python -u train-ddp.py --epochs 10 --patience 100 --dims 3 --dtype sst-binary --noseed -ns 10000 --input_vars u v w r --target p_full --output_vars p pv --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 32 --nysl 32 --nzsl 32 --window 2 --arch MLP_transformer --sequence
 
 See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
 
