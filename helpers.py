@@ -66,9 +66,9 @@ def get_1Dgrid(Lh, nx, nxoffset, nxsl, nxskip):
     x = np.linspace(xin, xfi, nxsl)
     return x
 
-def get_data_memmap(loadpath, nx, ny, nz, nxsl, nysl, nzsl, nxoffset, nyoffset, nzoffset, nxskip, nyskip, nzskip):
+def get_data_memmap(loadpath, nx, ny, nz, nxsl, nysl, nzsl, nxoffset, nyoffset, nzoffset, nxskip, nyskip, nzskip, nbytes):
     # Check data
-    check_data(loadpath, nx, ny, nz, nbyte=4)
+    check_data(loadpath, nx, ny, nz, nbytes)
     # Memory-map the binary file
     t = time.time()
     data_memmap = np.memmap(loadpath, dtype=np.float32, mode='r', shape=(nz, ny, nx)) # NOTE: data is stored [z, y, x]

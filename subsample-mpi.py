@@ -70,12 +70,16 @@ else:
 # Broadcast large arrays with chunking
 X = broadcast_large_array(X, comm) if rank == 0 else broadcast_large_array(None, comm)
 Y = broadcast_large_array(Y, comm) if rank == 0 else broadcast_large_array(None, comm)
+x = broadcast_large_array(x, comm) if rank == 0 else broadcast_large_array(None, comm)
+y = broadcast_large_array(y, comm) if rank == 0 else broadcast_large_array(None, comm)
+z = broadcast_large_array(z, comm) if rank == 0 else broadcast_large_array(None, comm)
+cv = broadcast_large_array(cv, comm) if rank == 0 else broadcast_large_array(None, comm)
 
 # Broadcast smaller arrays normally
-cv = comm.bcast(cv, root=0)
-x = comm.bcast(x, root=0)
-y = comm.bcast(y, root=0)
-z = comm.bcast(z, root=0)
+#cv = comm.bcast(cv, root=0)
+#x = comm.bcast(x, root=0)
+#y = comm.bcast(y, root=0)
+#z = comm.bcast(z, root=0)
 fileprefix = comm.bcast(fileprefix, root=0)
 
 comm.Barrier()  # Synchronize all processes
