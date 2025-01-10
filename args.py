@@ -5,7 +5,7 @@ import yaml
 from constants import FieldPredictionType
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-archs = ['fcn', 'fcn_sst', 'lstm', 'transformer']
+archs = ['fcn', 'fcn_sst', 'lstm', 'transformer', 'MLP_transformer']
 choices = ["maxent", "random", "full"]
 parser.add_argument('-m', '--method', choices=choices, default='maxent', help='subsample method')
 parser.add_argument('--arch', type=str, default='fcn_sst', choices=archs, help='Type of neural network architecture')

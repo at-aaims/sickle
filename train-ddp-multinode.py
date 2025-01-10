@@ -59,6 +59,7 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
 
     train_loader = DataLoader(TensorDataset(X_train, Y_train), batch_size=args.batch, sampler=train_sampler)
     test_loader = DataLoader(TensorDataset(X_test, Y_test), batch_size=args.batch, sampler=test_sampler)
+    print(f"batch size: {args.batch}")
 
     # Initialize the model and move it to the correct device
     input_shape = X_train.shape[1:]
@@ -83,7 +84,7 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
 
         for batch_X, batch_Y in train_loader:
             batch_X, batch_Y = batch_X.to(device), batch_Y.to(device)
-            print(f"Rank {rank}: Batch moved to {device}")
+            # print(f"Rank {rank}: Batch moved to {device}")
             optimizer.zero_grad()
             outputs = model(batch_X)
             loss = criterion(outputs, batch_Y)
@@ -109,22 +110,39 @@ def main():
     # Preprocess data
     data = np.load(os.path.join(args.output_dir, outfilename))
     X, Y = data['X'], data['Y']
-
+    print(f"X: {X.shape}; Y: {Y.shape}") # X: [T, [X,Y,Z]-or-NSAMPLES, C]; Y: [T, [X,Y,Z]-or-NSAMPLES, C] 
+   
+    # make timeseries to sequences
     if args.sequence:
         X, Y = dataloader.create_sequences(
-            X, Y, overlap=args.overlap, window_size=args.window,
-            field_prediction_type=args.field_prediction_type
+            X, Y, args
         )
     else:
         Y = np.squeeze(Y)
+    print(f"After sequence X: {X.shape}; Y: {Y.shape}")
 
+    # transpose shape of X and Y to be [B,T,C,Samples] and [B,T,C,H,W,D]
+    if args.method == "full":
+        X = X.transpose(0,1,5,2,3,4)
+    else:
+        X = X.transpose(0,1,3,2)
+    if args.field_prediction_type == FieldPredictionType.GLOBAL:
+        Y = Y.transpose(0,1,3,2)
+    elif args.field_prediction_type == FieldPredictionType.LOCAL:
+        Y = Y.transpose(0,1,3,2)
+    elif args.field_prediction_type == FieldPredictionType.FULL:
+        Y = Y.transpose(0,1,5,2,3,4)
+    else:
+        raise Exception("Enter a valid `args.target`.")
+    print(f"X: {X.shape}; Y: {Y.shape}")
+    
+    # train:val split
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_frac, shuffle=False)
 
     # Scale the data
     scaler_x = eval(args.xscaler)()
     X_train = scale(scaler_x.fit_transform, X_train)
     X_test = scale(scaler_x.transform, X_test)
-
     if args.yscaler != 'None':
         scaler_y = eval(args.yscaler)()
         Y_train = scale(scaler_y.fit_transform, Y_train)
@@ -135,6 +153,8 @@ def main():
     X_test = torch.tensor(X_test, dtype=torch.float32)
     Y_train = torch.tensor(Y_train, dtype=torch.float32)
     Y_test = torch.tensor(Y_test, dtype=torch.float32)
+    print(f"X_train: {X_train.shape}; X_test: {X_test.shape}")
+    print(f"Y_train: {Y_train.shape}; Y_test: {Y_test.shape}")
 
     # Determine world size and launch workers
     world_size = int(os.environ['SLURM_NTASKS'])
