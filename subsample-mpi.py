@@ -54,6 +54,7 @@ if rank == 0:
 
     # Load data
     X, Y, cv, x, y, z = load_data(args.path, args)
+    args.num_samples = X.shape[1]
 
     # Save data for broadcasting to all ranks
     fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}"
@@ -81,6 +82,7 @@ cv = broadcast_large_array(cv, comm) if rank == 0 else broadcast_large_array(Non
 #y = comm.bcast(y, root=0)
 #z = comm.bcast(z, root=0)
 fileprefix = comm.bcast(fileprefix, root=0)
+args.num_samples = comm.bcast(args.num_samples, root=0)
 
 comm.Barrier()  # Synchronize all processes
 
@@ -93,6 +95,8 @@ def get_subsample_fn():
         subsample_fn = create_maxent_subsampler(cv, args)
     elif args.method == "random":
         subsample_fn = subsample_random
+    elif args.method == "full":
+        subsample_fn = lambda X, n, t: np.arange(X.shape[1])
     else:
         raise ValueError(f"Unsupported sampling method: {args.method}")
     return subsample_fn
@@ -102,11 +106,7 @@ subsample_fn = get_subsample_fn()
 # Process local timesteps
 local_results = []
 for timestep in local_timesteps:
-    if args.method == "maxent":
-        indices = subsample_fn(X, args.num_samples, timestep)
-    elif args.method == "random":
-        indices = subsample_fn(X, args.num_samples, timestep)
-
+    indices = subsample_fn(X, args.num_samples, timestep)
     local_results.append((timestep, indices))
 
 # Gather results from all processes
@@ -116,7 +116,10 @@ all_results = comm.gather(local_results, root=0)
 if rank == 0:
     # Flatten results
     all_results = [item for sublist in all_results for item in sublist]
-    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+    if args.method == "full":
+        fileprefix = f"nxsl{args.nx}-nysl{args.ny}-nzsl{args.nz}-ns{args.num_samples}-window{args.window}"
+    else:
+        fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
     outfilename = f"subsampled_{fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
     np.savez(outfile, results=np.array(all_results, dtype=object))
