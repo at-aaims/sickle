@@ -10,16 +10,17 @@ from plotting import plot_samples
 
 def subsample_data(X, Y, x, y, z, subsample_fn, args):
     num_timesteps = X.shape[0] // args.window * args.window + 1
+    print(f"num_timesteps: {num_timesteps}")
 
-    if args.method == "full": # baseline case with full field input
-        Xout = np.zeros((num_timesteps, X.shape[1], X.shape[2]))
-    else:  # all other subsampling cases
-        Xout = np.zeros((num_timesteps, args.num_samples, X.shape[2]))
+    Xout = np.zeros((num_timesteps, args.num_samples, X.shape[2]))
+
+    print("Initialized Xout and Yout")
 
     if args.field_prediction_type == FieldPredictionType.GLOBAL: # global quantity prediction
         Yout = np.zeros((num_timesteps, 1, Y.shape[2]))
     elif args.field_prediction_type == FieldPredictionType.LOCAL:  # local field prediction
-        if args.method == "full": raise Exception("For baseline full field input, prediction cannot be subsampled. Change `args.target`.")
+        if args.method == "full": 
+            raise Exception("For baseline full field input, prediction cannot be subsampled. Change `args.target`.")
         Yout = np.zeros((num_timesteps, args.num_samples, Y.shape[2]))
     elif args.field_prediction_type == FieldPredictionType.FULL:  # full field prediction
         Yout = np.zeros((num_timesteps, Y.shape[1], Y.shape[2]))
@@ -27,34 +28,21 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
         raise Exception("Enter a valid `args.target`.")
 
     for timestep in range(0, num_timesteps - args.window, args.window):
-        if args.method != "full": # no need to subsample for baseline case with full field input
-            indices = subsample_fn(X, args.num_samples, timestep)
+        indices = subsample_fn(X, args.num_samples, timestep)
+
         for sub_timestep in range(args.window):
             ts = timestep + sub_timestep
-            if args.method == "full":
-                Xout[ts, :] = X[ts, :, :]
-            else:
-                Xout[ts, :, :] = X[ts, indices, :]
-              
+            Xout[ts, :, :] = X[ts, indices, :]
+
             if args.field_prediction_type == FieldPredictionType.GLOBAL:
                 subsampled_Y = Y[ts, :]
-            elif args.field_prediction_type == FieldPredictionType.LOCAL:
-                subsampled_Y = Y[ts, indices, :]
-            elif args.field_prediction_type == FieldPredictionType.FULL:
-                subsampled_Y = Y[ts, :, :]
             else:
-                raise Exception("Enter a valid `args.target`.")
+                subsampled_Y = Y[ts, indices, :]
             Yout[ts, :] = subsampled_Y
 
             if args.plot and args.method != "full":
                 plot_samples(indices, x, y, z, args)
     
-    # reshape Xout and Yout to 1D or 3D based on args.method and args.field_prediction_type
-    if args.method == "full":
-        Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[2])
-    if args.field_prediction_type == FieldPredictionType.FULL:
-        Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[2])
-
     return Xout, Yout
 
 if __name__ == "__main__":
@@ -65,12 +53,26 @@ if __name__ == "__main__":
 
     # Load the data
     X, Y, cv, x, y, z = load_data(args.path, args)
+    print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}")
+
+    if args.method == "full": 
+        args.num_samples = X.shape[1]
+        args.field_prediction_type = FieldPredictionType.FULL
 
     if args.method == "maxent":
         # Define the subsampling function for maximum entropy
         subsample_fn = create_maxent_subsampler(cv, args)
+    elif args.method == "full":
+        # No subsampling, use all indices
+        subsample_fn = lambda X, n, t: np.arange(X.shape[1])
     else:
         subsample_fn = lambda X, n, t: subsample_random(X, n, t)
+
+    # Reshape Xout and Yout to 1D or 3D based on args.method and args.field_prediction_type
+    if args.method == "full":
+        Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[2])
+    if args.field_prediction_type == FieldPredictionType.FULL:
+        Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[2])
 
     # Perform subsampling
     Xout, Yout = subsample_data(X, Y, x, y, z, subsample_fn, args)
