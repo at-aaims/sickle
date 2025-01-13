@@ -6,7 +6,15 @@ from args import args
 from helpers import check_and_create_dirs, load_data
 from algorithms import create_maxent_subsampler, subsample_random
 from constants import FieldPredictionType
-from plotting import plot_samples
+from plotting import plot_samples, plot2d
+
+
+def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128):
+    """Extracts the y-z plane for a given x-index at a specific timestep and feature."""
+    data_slice = X[timestep, :, feature_index]
+    data_3d = data_slice.reshape(nx, ny, nz)
+    return data_3d[x_index, :, :]
+
 
 def subsample_data(X, Y, x, y, z, subsample_fn, args):
     num_timesteps = X.shape[0] // args.window * args.window + 1
@@ -40,6 +48,10 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
                 subsampled_Y = Y[ts, indices, :]
             Yout[ts, :] = subsampled_Y
 
+            #if args.plot: # plot 2D slice - currently only works for "full" method
+            #    yz_plane = extract_yz_plane(Xout, timestep, 3, 0)
+            #    plot2d(yz_plane, y, z, ts)
+
             if args.plot and args.method != "full":
                 plot_samples(indices, x, y, z, args)
     
@@ -53,7 +65,8 @@ if __name__ == "__main__":
 
     # Load the data
     X, Y, cv, x, y, z = load_data(args.path, args)
-    print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}")
+    num_timesteps = X.shape[0] // args.window * args.window + 1
+    print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
 
     if args.method == "full": 
         args.num_samples = X.shape[1]
@@ -68,15 +81,15 @@ if __name__ == "__main__":
     else:
         subsample_fn = lambda X, n, t: subsample_random(X, n, t)
 
+    # Perform subsampling
+    Xout, Yout = subsample_data(X, Y, x, y, z, subsample_fn, args)
+    print(f"Xout: {Xout.shape}; Yout: {Yout.shape}")
+
     # Reshape Xout and Yout to 1D or 3D based on args.method and args.field_prediction_type
     if args.method == "full":
         Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[2])
     if args.field_prediction_type == FieldPredictionType.FULL:
         Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[2])
-
-    # Perform subsampling
-    Xout, Yout = subsample_data(X, Y, x, y, z, subsample_fn, args)
-    print(f"Xout: {Xout.shape}; Yout: {Yout.shape}")
 
     # Save output
     fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"

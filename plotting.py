@@ -33,6 +33,21 @@ def plot_samples(indices, x, y, z, args):
     plt.savefig(os.path.join(args.plot_dir, 'subsample_plot.png'), dpi=100, bbox_inches='tight')
     plt.close()
 
+def plot2d(data, y, z, timestep):
+    """ Plots a 2D plane from 1D data, y, and z coordinates. """
+    # Reshape the 1D data to match the grid defined by y and z
+    data_2d = data.reshape(len(y), len(z))
+
+    # Create the plot
+    plt.figure(figsize=(8, 6))
+    plt.contourf(z, y, data_2d, cmap="viridis")
+    plt.colorbar(label="Value")
+    plt.xlabel("z")
+    plt.ylabel("y")
+    plt.title("yz plane")
+    plt.savefig(os.path.join(args.plot_dir, f'plot2d_{timestep:04d}.png'), dpi=100)
+    plt.close()
+
 def plot_kmeans(x, y, labels):
     plt.figure(figsize=(9, 2))
     plt.scatter(x, y, c=labels, marker='.', cmap='tab10')
@@ -40,8 +55,8 @@ def plot_kmeans(x, y, labels):
     plt.ylabel('Y')
     plt.title(f'KMeans clustering of {args.cluster_var}')
     plt.colorbar()
-    plt.savefig(os.path.join(PLTDIR, f'kmeans_{timestep:04d}.png'), dpi=100)
-    plot.close()
+    plt.savefig(os.path.join(args.plot_dir, f'kmeans_{timestep:04d}.png'), dpi=100)
+    plt.close()
 
 def plot_adjacency_matrix(adj_matrix, n_dists, timestep):
     plt.clf()
