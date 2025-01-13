@@ -92,7 +92,10 @@ if __name__ == "__main__":
         Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[2])
 
     # Save output
-    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+    if args.method == "full":
+        fileprefix = f"nxsl{args.nx}-nysl{args.ny}-nzsl{args.nz}-ns{args.num_samples}-window{args.window}"
+    else:
+        fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
     outfilename = f"subsampled_{fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
     np.savez(outfile, X=Xout, Y=Yout, x=x, y=y, z=z)
