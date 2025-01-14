@@ -1,3 +1,4 @@
+import corner
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -186,4 +187,17 @@ def plot_contour_box(ax, x, y, z, data):
     ax.grid(False);
     # ax.axis("off");
 
-
+def plot_corner(X):
+    """
+    X: (N, num_vars)
+    Creates a corner plot with histograms on the diagonal and
+    scatter/density plots on the off-diagonal.
+    """
+    figure = corner.corner(X,
+                           bins=30,
+                           quantiles=[0.16, 0.5, 0.84],
+                           show_titles=True,
+                           title_fmt=".2f",
+                           labels=[f"var_{i}" for i in range(X.shape[1])])
+    plt.savefig(os.path.join(args.plot_dir, f'uips_pdf.png'), dpi=100)
+    plt.close()

@@ -4,9 +4,9 @@ import sys
 
 from args import args 
 from helpers import check_and_create_dirs, load_data
-from algorithms import create_maxent_subsampler, subsample_random
+from algorithms import create_maxent_subsampler, subsample_random, subsample_uips, build_pdf
 from constants import FieldPredictionType
-from plotting import plot_samples, plot2d_contour
+from plotting import plot_samples, plot2d_contour, plot_corner
 
 
 def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128):
@@ -19,10 +19,6 @@ def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128)
 def subsample_data(X, Y, x, y, z, subsample_fn, args):
     num_timesteps = X.shape[0] // args.window * args.window + 1
     print(f"num_timesteps: {num_timesteps}")
-
-    Xout = np.zeros((num_timesteps, args.num_samples, X.shape[2]))
-
-    print("Initialized Xout and Yout")
 
     if args.field_prediction_type == FieldPredictionType.GLOBAL: # global quantity prediction
         Yout = np.zeros((num_timesteps, 1, Y.shape[2]))
@@ -78,7 +74,19 @@ if __name__ == "__main__":
     elif args.method == "full":
         # No subsampling, use all indices
         subsample_fn = lambda X, n, t: np.arange(X.shape[1])
-    else:
+    elif args.method == "uips":
+        # Phase-space sampling
+        if args.plot: 
+            X_flat = X.reshape(-1, X.shape[-1])
+            plot_corner(X_flat)
+
+        def subsample_fn(X, n, t):
+            X_local = X[t]
+            hist, bin_edges = build_pdf(X_local, nbins=20)
+            return subsample_uips(X_local[None, ...], n, hist, bin_edges)
+
+    else: 
+        # Random subsampling
         subsample_fn = lambda X, n, t: subsample_random(X, n, t)
 
     # Perform subsampling

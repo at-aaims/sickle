@@ -154,3 +154,105 @@ def subsample_maxent(X, cv, num_samples):
     #indices2 = np.copy(indices)
 
     return np.array(indices)
+
+
+def build_pdf(X, nbins=10):
+    """
+    Build a multi-dimensional histogram (PDF) from the entire dataset X.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Shape (num_timesteps, samples, num_vars).
+    nbins : int or list
+        Number of bins for each dimension, or a list with number of bins per dimension.
+
+    Returns
+    -------
+    hist : np.ndarray
+        The counts in each bin (multi-dimensional).
+    bin_edges : list of np.ndarray
+        The edges for each dimension.
+    """
+    # Flatten over time and sample index -> shape (num_timesteps*samples, num_vars)
+    X_flat = X.reshape(-1, X.shape[-1])
+
+    # For simplicity, we set the same number of bins for each feature dimension
+    # If you want different bins per dimension, pass a list/tuple to `bins=...`
+    hist, bin_edges = np.histogramdd(X_flat, bins=nbins)
+
+    return hist, bin_edges
+
+
+def subsample_uips(X, n, hist, bin_edges):
+    """
+    Uniform in phase space: 
+    1) Identify all bins that have nonzero counts. 
+    2) Pick 'n' bins uniformly at random among the nonzero ones.
+    3) From each chosen bin, pick a random data point from X that lies in that bin.
+    
+    Parameters
+    ----------
+    X : np.ndarray
+        Shape (num_timesteps, samples, num_vars). 
+        In practice, you'll likely pass X[t,...] for a single timestep, or the entire data.
+    n : int
+        Number of points to subsample.
+    hist : np.ndarray
+        Histogram from build_phase_space_pdf.
+    bin_edges : list of np.ndarray
+        The bin edges for each dimension (output of np.histogramdd).
+
+    Returns
+    -------
+    indices : array-like
+        Indices (1D) in X[t,...] that correspond to the chosen subsampled points.
+    """
+    # Flatten to shape (N, num_vars) to quickly find which bin each point belongs to
+    X_flat = X.reshape(-1, X.shape[-1])
+    N = X_flat.shape[0]
+
+    # (A) Identify bin index for each point in X
+    #     np.digitize returns the bin index along each dimension.
+    #     We then combine them into a single "bin ID".
+    bin_indices_per_dim = []
+    for dim in range(X_flat.shape[1]):
+        # digitize returns indices in [1..len(bin_edges[dim])], we shift to [0..]
+        # (also be mindful of points on bin_edges boundaries)
+        bi = np.digitize(X_flat[:, dim], bin_edges[dim]) - 1
+        # Clip out-of-bounds if needed (i.e. points exactly at the max can be len(bin_edges[dim]) - 1)
+        bi = np.clip(bi, 0, len(bin_edges[dim]) - 2)
+        bin_indices_per_dim.append(bi)
+    bin_indices_per_dim = np.array(bin_indices_per_dim).T  # shape (N, num_vars)
+
+    # Convert multi-dim bin indices into a “single integer” bin ID.
+    # One approach is to unravel them with np.ravel_multi_index, but we need the shape from hist.
+    bin_id = np.ravel_multi_index(tuple(bin_indices_per_dim.T), dims=hist.shape)
+
+    # (B) Identify which bins are nonzero
+    nonzero_bin_ids = np.where(hist.ravel() > 0)[0]
+
+    # (C) We pick n bins uniformly at random among these nonzero bins
+    chosen_bins = np.random.choice(nonzero_bin_ids, size=n, replace=True)
+
+    # (D) For each chosen bin, pick a random data point that lies in that bin
+    chosen_indices = []
+    for cb in chosen_bins:
+        # all points that lie in bin cb
+        candidate_points = np.where(bin_id == cb)[0]
+        if len(candidate_points) == 0:
+            # fallback if the bin is truly empty, though we said it's nonzero
+            # you could skip or pick a fallback:
+            continue
+        # pick one from candidate_points randomly
+        chosen_pt = np.random.choice(candidate_points)
+        chosen_indices.append(chosen_pt)
+
+    # chosen_indices are indices in the flattened array
+    # If you want them as indices in the original shape (time, sample), 
+    # you’d have to invert that. 
+    # But typically you'd do this step once globally (not per timestep).
+    # For demonstration, we’ll just return the flattened indices for now.
+    chosen_indices = np.array(chosen_indices, dtype=int)
+
+    return chosen_indices
