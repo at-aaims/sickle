@@ -65,7 +65,7 @@ args = parser.parse_args()
 
 if args.target == 'drag':
     args.field_prediction_type = FieldPredictionType.GLOBAL
-elif args.target == 'p_full':
+elif args.target == 'p_full' or args.method == 'full':
     args.field_prediction_type = FieldPredictionType.FULL
 else:
     args.field_prediction_type = FieldPredictionType.LOCAL

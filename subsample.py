@@ -71,7 +71,6 @@ if __name__ == "__main__":
 
     if args.method == "full": 
         args.num_samples = X.shape[1]
-        args.field_prediction_type = FieldPredictionType.FULL
 
     if args.method == "maxent":
         # Define the subsampling function for maximum entropy
