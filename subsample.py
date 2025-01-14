@@ -6,7 +6,7 @@ from args import args
 from helpers import check_and_create_dirs, load_data
 from algorithms import create_maxent_subsampler, subsample_random
 from constants import FieldPredictionType
-from plotting import plot_samples, plot2d
+from plotting import plot_samples, plot2d_contour
 
 
 def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128):
@@ -48,9 +48,10 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
                 subsampled_Y = Y[ts, indices, :]
             Yout[ts, :] = subsampled_Y
 
-            #if args.plot: # plot 2D slice - currently only works for "full" method
-            #    yz_plane = extract_yz_plane(Xout, timestep, 3, 0)
-            #    plot2d(yz_plane, y, z, ts)
+            if args.plot: # plot 2D slice
+                if args.method == "full":
+                    yz_plane = extract_yz_plane(Xout, timestep, 3, 0)
+                    plot2d_contour(yz_plane, y, z, ts)
 
             if args.plot and args.method != "full":
                 plot_samples(indices, x, y, z, args)

@@ -33,7 +33,7 @@ def plot_samples(indices, x, y, z, args):
     plt.savefig(os.path.join(args.plot_dir, 'subsample_plot.png'), dpi=100, bbox_inches='tight')
     plt.close()
 
-def plot2d(data, y, z, timestep):
+def plot2d_contour(data, y, z, timestep):
     """ Plots a 2D plane from 1D data, y, and z coordinates. """
     # Reshape the 1D data to match the grid defined by y and z
     data_2d = data.reshape(len(y), len(z))
