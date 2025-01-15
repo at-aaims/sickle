@@ -10,7 +10,7 @@ choices = ['maxent', 'random', 'full', 'uips']
 parser.add_argument('-m', '--method', choices=choices, default='maxent', help='subsample method')
 parser.add_argument('--arch', type=str, default='fcn_sst', choices=archs, help='Type of neural network architecture')
 parser.add_argument('-b', '--batch', type=int, default=32, help='batch size')
-choices = ['p', 'pv', 'wz', 'pwz', 'r']
+choices = ['p', 'pv', 'wz', 'pwz', 'r', 'u', 'v', 'w']
 parser.add_argument('-cv', '--cluster_var', nargs="+", type=str, default='pv', choices=choices, help='cluster variable')
 parser.add_argument('--cutoff', type=float, default=0.5, help='optimal data cutoff factor, e.g., 0.1 keep top ten percent')
 parser.add_argument('--dims', type=int, default=2, choices=[2, 3], help='dataset dimensionality, 2 or 3 dimensions')

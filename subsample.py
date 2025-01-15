@@ -52,7 +52,7 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
                     plot2d_contour(yz_plane, y, z, ts)
 
             if args.plot and args.method != "full":
-                plot_samples(indices, x, y, z, args)
+                plot_samples(indices, x, y, z, timestep, args)
     
     return Xout, Yout
 
