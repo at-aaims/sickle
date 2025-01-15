@@ -4,6 +4,7 @@ import numpy as np
 import os
 from args import args
 
+
 def plot_samples(indices, x, y, z, ts, args):
     """ Plot subsampled data based on input dimensions and settings. """
     plt.clf()
@@ -36,6 +37,7 @@ def plot_samples(indices, x, y, z, ts, args):
     plt.savefig(os.path.join(args.plot_dir, fn), dpi=100, bbox_inches='tight')
     plt.close()
 
+
 def plot2d_contour(data, y, z, timestep):
     """ Plots a 2D plane from 1D data, y, and z coordinates. """
     # Reshape the 1D data to match the grid defined by y and z
@@ -51,6 +53,7 @@ def plot2d_contour(data, y, z, timestep):
     plt.savefig(os.path.join(args.plot_dir, f'plot2d_{timestep:04d}.png'), dpi=100)
     plt.close()
 
+
 def plot_kmeans(x, y, labels):
     plt.figure(figsize=(9, 2))
     plt.scatter(x, y, c=labels, marker='.', cmap='tab10')
@@ -60,6 +63,7 @@ def plot_kmeans(x, y, labels):
     plt.colorbar()
     plt.savefig(os.path.join(args.plot_dir, f'kmeans_{timestep:04d}.png'), dpi=100)
     plt.close()
+
 
 def plot_adjacency_matrix(adj_matrix, n_dists, timestep):
     plt.clf()
@@ -90,7 +94,8 @@ def plot_histograms(X_train, X_test, Y_train, Y_test):
     ax[2].hist(Y_test, bins=bins, alpha=0.5, edgecolor='red', color='red')
     ax[2].set_title('Histogram of Y')
     plt.tight_layout()
-    plt.show()
+    plt.savefig(os.path.join(args.plot_dir, f'histogram_train_test.png'), dpi=100)
+    plt.close()
 
 
 def plot_learning_curve(train_loss_history, val_loss_history):
@@ -102,7 +107,8 @@ def plot_learning_curve(train_loss_history, val_loss_history):
     plt.yscale('log')
     plt.xlabel('Epoch'); plt.ylabel(r'Loss ($mse$)')
     plt.legend(frameon=False);
-    # plt.savefig(os.path.join(args.plot_dir, f'ML_loss-curves.png'), dpi=100)
+    plt.savefig(os.path.join(args.plot_dir, f'ML_loss-curves.png'), dpi=100)
+    plt.close()
 
 
 def plot_ML_outputs(Y_test_ML, Y_test):
@@ -136,7 +142,9 @@ def plot_ML_outputs(Y_test_ML, Y_test):
         axs[i].set_visible(False)
 
     plt.tight_layout()
-    # plt.savefig(os.path.join(args.plot_dir, f'ML_output.png'), dpi=100)
+    plt.savefig(os.path.join(args.plot_dir, f'ML_output.png'), dpi=100)
+    plt.close()
+
 
 def plot_contour_box(ax, x, y, z, data):
     # Plot contour box
@@ -188,6 +196,7 @@ def plot_contour_box(ax, x, y, z, data):
     ax.set_box_aspect([aspectratio,aspectratio,1], zoom=1)
     ax.grid(False);
     # ax.axis("off");
+
 
 def plot_corner(X):
     """
