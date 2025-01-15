@@ -24,8 +24,8 @@ See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
 
 # Tests on laptop - random and maxent
 
-    python subsample.py -m random --path ../DataSiftML/data/cylinder --target drag -ns 540
-    python subsample.py -m maxent --path ../DataSiftML/data/cylinder --target drag -ns 540 -cv p
+    python subsample.py -m random --path ~/data/cylinder --target drag -ns 540
+    python subsample.py -m maxent --path ~/data/cylinder --target drag -ns 540 -cv p
 
 # Tests on Frontier
 
@@ -39,8 +39,8 @@ See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
 
     # OpenFOAM dataset - random and maxent
 
-    srun -n 4 python -u subsample-mpi.py -m random --path ../datasiftml/data --target drag -ns 540
-    srun -n 4 python -u subsample-mpi.py -m maxent --path ../datasiftml/data --target drag -ns 540
+    srun -n 4 python -u subsample-mpi.py -m random --path ~/data/cylinder --target drag -ns 540
+    srun -n 4 python -u subsample-mpi.py -m maxent --path ~/data/cylinder --target drag -ns 540
 
     # Taylor Green 10 timesteps
     OPENBLAS_NUM_THREADS=4 srun -n 4 python -u subsample-mpi.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
@@ -62,9 +62,9 @@ See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
 
 # Using with flow over cylinder case
 
-python subsample.py -m maxent --path ../DataSiftML/data/cylinder --target drag -ns 1080 -nc 20 -cv wz
+python subsample.py -m maxent --path ~/data/cylinder --target drag -ns 1080 -nc 20 -cv wz
 
-python subsample.py -m uips --path ../DataSiftML/data/cylinder --target drag -ns 1080 -nc 20 --plot
+python subsample.py -m uips --path ~/data/cylinder --target drag -ns 1080 -nc 20 --plot
 
 # Uniform-in-phase-space testing
 
