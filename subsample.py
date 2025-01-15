@@ -20,6 +20,8 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
     num_timesteps = X.shape[0] // args.window * args.window + 1
     print(f"num_timesteps: {num_timesteps}")
 
+    Xout = np.zeros((num_timesteps, args.num_samples, X.shape[2]))
+
     if args.field_prediction_type == FieldPredictionType.GLOBAL: # global quantity prediction
         Yout = np.zeros((num_timesteps, 1, Y.shape[2]))
     elif args.field_prediction_type == FieldPredictionType.LOCAL:  # local field prediction
