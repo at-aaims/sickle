@@ -62,9 +62,9 @@ See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
 
 # Using with flow over cylinder case
 
-python subsample.py -m maxent --path ../DataSiftML/data/cylinder --target drag -ns 1080 -nc 20 --target wz
+python subsample.py -m maxent --path ../DataSiftML/data/cylinder --target drag -ns 1080 -nc 20 -cv wz
 
-python subsample.py -m uips --path ../DataSiftML/data/cylinder --target drag -ns 1080 -nc 20 --target drag --plot
+python subsample.py -m uips --path ../DataSiftML/data/cylinder --target drag -ns 1080 -nc 20 --plot
 
 # Uniform-in-phase-space testing
 
