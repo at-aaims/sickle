@@ -31,7 +31,9 @@ def plot_samples(indices, x, y, z, ts, args):
         plt.ylim([-10, 10])
         plt.axis('equal')
 
-    plt.savefig(os.path.join(args.plot_dir, f'subsample_plot_t{ts:04d}.png'), dpi=100, bbox_inches='tight')
+    fn = f'subsample_plot_t{ts:04d}.png'
+    print(f'Creating {fn}')
+    plt.savefig(os.path.join(args.plot_dir, fn), dpi=100, bbox_inches='tight')
     plt.close()
 
 def plot2d_contour(data, y, z, timestep):
