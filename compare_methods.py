@@ -53,14 +53,15 @@ if __name__ == "__main__":
     colormap = plt.cm.tab10  # You can use 'tab10', 'viridis', 'plasma', etc.
     colors = [colormap(i) for i in range(len(histograms))]
     print(colors)
-    xmin, xmax = -5, 5
-    bins = np.linspace(xmin, xmax, args.bins)
 
     # Plot the histograms
     plt.figure(figsize=(6, 4))
     for i, (method, subsampled_cv) in enumerate(histograms.items()):
         color = colors[i]
-        #plt.hist(subsampled_cv, bins=args.bins, alpha=0.6, label=method, density=True, color=color)
+
+        xmin, xmax = np.min(subsampled_cv), np.max(subsampled_cv)
+        bins = np.linspace(xmin, xmax, args.bins)
+
         plt.hist(subsampled_cv, bins=bins, alpha=0.6, label=method, density=True, color=color)
 
         kde = gaussian_kde(subsampled_cv)
@@ -70,17 +71,26 @@ if __name__ == "__main__":
         area = np.sum(values * np.diff(bin_edges))
         print(f"Total Area: {area}")
 
+    fs = 10
+
     # Set plot title and labels
     #plt.title("Histogram of Potential Vorticity")
-    plt.title("P1F4R32", fontsize=12)
+    plt.title("P1F4R32", fontsize=fs)
     #plt.title("OF2DCyl")
-    plt.xlabel("Potential Vorticity", fontsize=10)
+    plt.xlabel("Potential Vorticity", fontsize=fs)
     #plt.xlabel("Vorticity")
-    plt.ylabel("Density", fontsize=10)
+    plt.ylabel("Density", fontsize=fs)
     #plt.yscale('log')
-    #plt.legend()
-    plt.legend(loc='upper right', ncol=2, handlelength=1.0, fontsize=8)
 
+    # Set tick label size
+    plt.tick_params(axis='both', labelsize=fs)
+
+    ax = plt.gca()
+    ax.tick_params(axis='x', labelsize=fs)
+    ax.tick_params(axis='y', labelsize=fs)
+
+    # Add legend
+    plt.legend(loc='upper right', ncol=2, handlelength=1.0, fontsize=fs)
 
     # Set x-axis limits
     plt.xlim(xmin, xmax)

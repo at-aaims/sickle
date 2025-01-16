@@ -70,6 +70,8 @@ See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
 
 Used to create a histogram plot which will compare the subsampling distributions of the various methods.
 
+    python compare_methods.py --path ~/data/cylinder --target drag -ns 1080 -nc 20 -cv wz
+
     python compare_methods.py --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
 
     python compare_methods.py --dims 3 --dtype sst-binary --path ~/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 20971 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z
