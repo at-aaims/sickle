@@ -103,7 +103,7 @@ def get_subsample_fn():
 
         def subsample_fn(X, n, t):
             X_local = X[t]
-            hist, bin_edges = build_pdf(X_local, nbins=20)
+            hist, bin_edges = build_pdf(X_local, nbins=args.bins)
             return subsample_uips(X_local[None, ...], n, hist, bin_edges)
     elif args.method == "full":
         subsample_fn = lambda X, n, t: np.arange(X.shape[1])

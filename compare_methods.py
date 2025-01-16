@@ -1,8 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+
 from args import args
 from helpers import load_data
 from algorithms import create_maxent_subsampler, subsample_random, subsample_uips, build_pdf
+from scipy.stats import gaussian_kde
+
 
 def get_subsample_fn(method, cv, args):
     if method == "maxent":
@@ -12,7 +16,7 @@ def get_subsample_fn(method, cv, args):
     elif method == "uips":
         def subsample_fn(X, n, t):
             X_local = X[t]
-            hist, bin_edges = build_pdf(X_local, nbins=20)
+            hist, bin_edges = build_pdf(X_local, nbins=args.bins)
             return subsample_uips(X_local[None, ...], n, hist, bin_edges)
         return subsample_fn
     elif method == "full":
@@ -27,10 +31,10 @@ if __name__ == "__main__":
     num_timesteps = X.shape[0] // args.window * args.window + 1
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
 
-    ts = 0  # Use timestep 0 for this example
+    ts = 0 # timestep
 
     histograms = {}  # Store histogram data for plotting
-    for method in ["maxent", "random", "uips", "full"]:
+    for method in ["full", "random", "uips", "maxent"]:
         # Get the appropriate subsample function
         subsample_fn = get_subsample_fn(method, cv, args)
         
@@ -39,23 +43,49 @@ if __name__ == "__main__":
         
         # Extract the subsampled cluster variable
         subsampled_cv = cv[ts, indices]
-        histograms[method] = subsampled_cv  # Store subsampled data
+        histograms[method] = subsampled_cv
+
+    print("Data Lengths:")
+    for method, subsampled_cv in histograms.items():
+        print(f"{method}: {len(subsampled_cv)}")
+
+    # Use a predefined colormap
+    colormap = plt.cm.tab10  # You can use 'tab10', 'viridis', 'plasma', etc.
+    colors = [colormap(i) for i in range(len(histograms))]
+    print(colors)
+    xmin, xmax = -5, 5
+    bins = np.linspace(xmin, xmax, args.bins)
 
     # Plot the histograms
     plt.figure(figsize=(6, 4))
-    for method, subsampled_cv in histograms.items():
-        plt.hist(subsampled_cv, bins=30, alpha=0.6, label=method, density=True)
+    for i, (method, subsampled_cv) in enumerate(histograms.items()):
+        color = colors[i]
+        #plt.hist(subsampled_cv, bins=args.bins, alpha=0.6, label=method, density=True, color=color)
+        plt.hist(subsampled_cv, bins=bins, alpha=0.6, label=method, density=True, color=color)
+
+        kde = gaussian_kde(subsampled_cv)
+        plt.plot(bins, kde(bins), label=method, color=color)
+
+        values, bin_edges = np.histogram(subsampled_cv, bins=bins, density=True)
+        area = np.sum(values * np.diff(bin_edges))
+        print(f"Total Area: {area}")
 
     # Set plot title and labels
-    plt.title("Comparison of Subsampling Methods (Cluster Variable)")
-    plt.xlabel("Cluster Variable (cv)")
-    plt.ylabel("Density")
-    plt.legend()
+    #plt.title("Histogram of Potential Vorticity")
+    plt.title("P1F4R32", fontsize=12)
+    #plt.title("OF2DCyl")
+    plt.xlabel("Potential Vorticity", fontsize=10)
+    #plt.xlabel("Vorticity")
+    plt.ylabel("Density", fontsize=10)
+    #plt.yscale('log')
+    #plt.legend()
+    plt.legend(loc='upper right', ncol=2, handlelength=1.0, fontsize=8)
+
 
     # Set x-axis limits
-    plt.xlim(-5, 5)
+    plt.xlim(xmin, xmax)
 
     # Save and show the plot
     plt.tight_layout()
-    plt.savefig("subsampling_methods_histograms.png")
+    plt.savefig(os.path.join(args.plot_dir, "subsampling_methods_histograms.png"))
     plt.close()

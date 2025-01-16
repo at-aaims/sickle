@@ -9,6 +9,7 @@ archs = ['fcn', 'fcn_sst', 'lstm', 'transformer', 'MLP_transformer']
 choices = ['maxent', 'random', 'full', 'uips']
 parser.add_argument('-m', '--method', choices=choices, default='maxent', help='subsample method')
 parser.add_argument('--arch', type=str, default='fcn_sst', choices=archs, help='Type of neural network architecture')
+parser.add_argument('--bins', type=int, default=100, help='Number of bins to represent PDFs')
 parser.add_argument('-b', '--batch', type=int, default=32, help='batch size')
 choices = ['p', 'pv', 'wz', 'pwz', 'r', 'u', 'v', 'w']
 parser.add_argument('-cv', '--cluster_var', nargs="+", type=str, default='pv', choices=choices, help='cluster variable')
