@@ -42,6 +42,8 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
 
             if args.field_prediction_type == FieldPredictionType.GLOBAL:
                 subsampled_Y = Y[ts, :]
+            elif args.field_prediction_type == FieldPredictionType.FULL:
+                subsampled_Y = Y[ts, :, :]
             else:
                 subsampled_Y = Y[ts, indices, :]
             Yout[ts, :] = subsampled_Y
