@@ -14,7 +14,7 @@ from helpers import scale
 from args import args
 from constants import *
 
-fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
 outfilename = f"subsampled_{fileprefix}.npz"
 
 def setup_ddp():
