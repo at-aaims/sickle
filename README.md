@@ -12,7 +12,7 @@ Login to Frontier
 
     source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
 
-    OPENBLAS_NUM_THREADS=4 python subsample.py --method maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 10000 --input_vars u v w r --target p_full --output_vars p pv --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 32 --nysl 32 --nzsl 32 --window 2
+    python subsample.py --method maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 10000 --input_vars u v w r --target p_full --output_vars p pv --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 32 --nysl 32 --nzsl 32 --window 2
 
 # Training
 
