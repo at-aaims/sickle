@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -A STF218
-#SBATCH -J DataSiftML
+#SBATCH -J sickle
 #SBATCH -q debug
 #SBATCH -N 2
 #SBATCH -n 16

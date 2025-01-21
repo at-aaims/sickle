@@ -6,11 +6,12 @@ from constants import FieldPredictionType
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 archs = ['fcn', 'fcn_sst', 'lstm', 'transformer', 'MLP_transformer']
-choices = ["maxent", "random", "full"]
+choices = ['maxent', 'random', 'full', 'uips']
 parser.add_argument('-m', '--method', choices=choices, default='maxent', help='subsample method')
 parser.add_argument('--arch', type=str, default='fcn_sst', choices=archs, help='Type of neural network architecture')
+parser.add_argument('--bins', type=int, default=100, help='Number of bins to represent PDFs')
 parser.add_argument('-b', '--batch', type=int, default=32, help='batch size')
-choices = ['p', 'pv', 'wz', 'pwz', 'r']
+choices = ['p', 'pv', 'wz', 'pwz', 'r', 'u', 'v', 'w']
 parser.add_argument('-cv', '--cluster_var', nargs="+", type=str, default='pv', choices=choices, help='cluster variable')
 parser.add_argument('--cutoff', type=float, default=0.5, help='optimal data cutoff factor, e.g., 0.1 keep top ten percent')
 parser.add_argument('--dims', type=int, default=2, choices=[2, 3], help='dataset dimensionality, 2 or 3 dimensions')
@@ -20,6 +21,7 @@ parser.add_argument('--nbytes', type=int, default=4, help='how many bytes used f
 parser.add_argument('-nn', '--knn', type=int, default=0, help='use knn to include neighbars')
 parser.add_argument('-nc', '--num_clusters', type=int, default=10, help='number of clusters')
 parser.add_argument('-ns', '--num_samples', type=int, default=100, help='number of subsamples')
+parser.add_argument('-o', '--output', action='store_true', default=False, help='output optional files')
 parser.add_argument('--num_timesteps', type=int, default=100, help='OpenFOAM number of timestamps')
 parser.add_argument('--path', type=str, default='./data', help='path to data')
 parser.add_argument('--patience', type=int, default=5, help='number epochs for early stopping')
@@ -65,7 +67,7 @@ args = parser.parse_args()
 
 if args.target == 'drag':
     args.field_prediction_type = FieldPredictionType.GLOBAL
-elif args.target == 'p_full':
+elif args.target == 'p_full' or args.method == 'full':
     args.field_prediction_type = FieldPredictionType.FULL
 else:
     args.field_prediction_type = FieldPredictionType.LOCAL

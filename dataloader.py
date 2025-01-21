@@ -76,6 +76,7 @@ class DataLoaderOF(DataLoader):
         else:
             raise ValueError("dims must be either 2 or 3")
         Y = params[target]
+        Y = np.expand_dims(Y, axis=-1) # (100, 10000) => (100, 10000, 1)
         cv = params[cv[0]]
 
         return X, Y, cv

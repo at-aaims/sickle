@@ -24,21 +24,23 @@ See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
 
 # Tests on laptop - random and maxent
 
-    python subsample.py -m random --path ../DataSiftML/data/cylinder --target drag -ns 540
-    python subsample.py -m maxent --path ../DataSiftML/data/cylinder --target drag -ns 540 -cv p
+    python subsample.py -m random --path ~/data/cylinder --target drag -ns 540
+    python subsample.py -m maxent --path ~/data/cylinder --target drag -ns 540 -cv p
 
 # Tests on Frontier
 
     source '/lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate'
 
-    OPENBLAS_NUM_THREADS=4 python subsample.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
+    python subsample.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
+
+    python subsample.py -m full --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z
 
 # Parallel tests on Frontier
 
     # OpenFOAM dataset - random and maxent
 
-    srun -n 4 python -u subsample-mpi.py -m random --path ../datasiftml/data --target drag -ns 540
-    srun -n 4 python -u subsample-mpi.py -m maxent --path ../datasiftml/data --target drag -ns 540
+    srun -n 4 python -u subsample-mpi.py -m random --path ~/data/cylinder --target drag -ns 540
+    srun -n 4 python -u subsample-mpi.py -m maxent --path ~/data/cylinder --target drag -ns 540
 
     # Taylor Green 10 timesteps
     OPENBLAS_NUM_THREADS=4 srun -n 4 python -u subsample-mpi.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
@@ -58,8 +60,25 @@ See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
 
     OPENBLAS_NUM_THREADS=4 srun -n 4 python -u subsample-mpi.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/Green/ --plot -ns 1000 --input_vars u v w r --output_vars p --cluster_var r --nx 7170 --ny 3584 --nz 7168 --gravity y --nxsl 1536 --ny 768 --nzsl 1536 --nbytes 32 --timesteps 7.7
 
+# Using with flow over cylinder case
+
+    python subsample.py -m maxent --path ~/data/cylinder --target drag -ns 1080 -nc 20 -cv wz
+
+    python subsample.py -m uips --path ~/data/cylinder --target drag -ns 1080 -nc 20 --plot
+
+# Compare methods
+
+Used to create a histogram plot which will compare the subsampling distributions of the various methods.
+
+    python compare_methods.py --path ~/data/cylinder --target drag -ns 1080 -nc 20 -cv wz
+
+    python compare_methods.py --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
+
+    python compare_methods.py --dims 3 --dtype sst-binary --path ~/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 20971 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z
+
 # Uniform-in-phase-space testing
 
 See [uips/README.md](uips/README.md)
+
 
 
