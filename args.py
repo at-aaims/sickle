@@ -5,7 +5,7 @@ import yaml
 from constants import FieldPredictionType
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-archs = ['fcn', 'fcn_sst', 'lstm', 'transformer', 'MLP_transformer']
+archs = ['fcn', 'fcn_sst', 'lstm', 'transformer', 'MLP_transformer', 'CNN_transformer']
 choices = ['maxent', 'random', 'full', 'uips']
 parser.add_argument('-m', '--method', choices=choices, default='maxent', help='subsample method')
 parser.add_argument('--arch', type=str, default='fcn_sst', choices=archs, help='Type of neural network architecture')
@@ -72,7 +72,10 @@ elif args.target == 'p_full' or args.method == 'full':
 else:
     args.field_prediction_type = FieldPredictionType.LOCAL
 
-if args.arch == 'lstm' or args.arch == 'transformer' or args.arch == 'MLP_transformer': 
+if args.method == "full": 
+        args.num_samples = args.nxsl*args.nysl*args.nzsl 
+
+if args.arch == 'lstm' or args.arch == 'transformer' or args.arch == 'MLP_transformer' or args.arch == 'CNN_transformer': 
     args.sequence = True
 
 fn = './defaults.yaml'

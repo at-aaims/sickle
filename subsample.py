@@ -50,7 +50,7 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
 
             if args.plot: # plot 2D slice
                 if args.method == "full":
-                    yz_plane = extract_yz_plane(Xout, timestep, 3, 0)
+                    yz_plane = extract_yz_plane(Xout, timestep, 3, 0, nx=args.nxsl, ny=args.nysl, nz=args.nzsl)
                     plot2d_contour(yz_plane, y, z, ts)
 
             if args.plot and args.method != "full":
@@ -104,10 +104,7 @@ if __name__ == "__main__":
         Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[2])
 
     # Save output
-    if args.method == "full":
-        fileprefix = f"nxsl{args.nx}-nysl{args.ny}-nzsl{args.nz}-ns{args.num_samples}-window{args.window}"
-    else:
-        fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
     outfilename = f"subsampled_{fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
     np.savez(outfile, X=Xout, Y=Yout, x=x, y=y, z=z)
