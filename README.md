@@ -16,6 +16,8 @@ Login to Frontier
 
 # Training
 
+    source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
+
     module load cray-python/3.10.10 rocm
 
     python -u train-ddp.py --epochs 10 --patience 100 --dims 3 --dtype sst-binary --noseed -ns 10000 --input_vars u v w r --target p_full --output_vars p pv --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 32 --nysl 32 --nzsl 32 --window 2 --arch MLP_transformer --sequence

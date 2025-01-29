@@ -35,13 +35,18 @@ echo "World Size: $WORLD_SIZE, Node Rank: $NODE_RANK, Master Addr: $MASTER_ADDR,
 srun -N 2 -n 2 --ntasks-per-node=1 --overlap ./energy/power_dump.sh &
 srun -N 2 -n 2 --ntasks-per-node=1 --overlap ./energy/read_energy.sh
 
-srun --kill-on-bad-exit=1 --export=ALL python -u train-pt-ddp-multinode.py \
-     --epochs 10 --patience 100 --dims 3 --dtype sst-binary \
-     --noseed -ns 10000 \
-     --input_vars u v w r --output_vars p --cluster_var pv \
-     --nx 514 --ny 512 --nz 256 --gravity z \
-     --nxsl 128 --nysl 128 --nzsl 128 \
-     --window 5 --arch transformer
+# subsampling
+OPENBLAS_NUM_THREADS=4 python subsample.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
+
+# training
+srun -n 2 --kill-on-bad-exit=1 --export=ALL python -u train-ddp.py --epochs 100 --patience 100 --noseed -ns 100      --nxsl 128 --nysl 128 --nzsl 64 --window 2 --arch transformer --method maxent
+
+#srun -n 1 --kill-on-bad-exit=1 --export=ALL python -u train-ddp-multinode.py --epochs 100 --patience 100 --noseed -ns 100      --nxsl 128 --nysl 128 --nzsl 64 --window 2 --arch transformer --method maxent
+
+#srun --kill-on-bad-exit=1 --export=ALL python -u train-ddp-multinode.py \
+#     --epochs 100 --patience 100 --noseed -ns 10000 \
+#     --nxsl 128 --nysl 128 --nzsl 128 \
+#     --window 5 --arch transformer --method maxent
 
 srun -N 2 -n 2 --ntasks-per-node=1 --overlap ./energy/read_energy.sh
 scancel $SLURM_JOB_ID

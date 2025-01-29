@@ -31,7 +31,7 @@ if __name__ == "__main__":
     num_timesteps = X.shape[0] // args.window * args.window + 1
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
 
-    ts = 0 # timestep
+    ts = 4 # timestep
 
     histograms = {}  # Store histogram data for plotting
     for method in ["full", "random", "uips", "maxent"]:
@@ -65,7 +65,9 @@ if __name__ == "__main__":
         plt.hist(subsampled_cv, bins=bins, alpha=0.6, label=method, density=True, color=color)
 
         kde = gaussian_kde(subsampled_cv)
-        plt.plot(bins, kde(bins), label=method, color=color)
+        kde_values = kde(bins)
+        #kde_values_normalized = kde_values / np.max(kde_values)
+        plt.plot(bins, kde_values, label=method, color=color)
 
         values, bin_edges = np.histogram(subsampled_cv, bins=bins, density=True)
         area = np.sum(values * np.diff(bin_edges))
@@ -73,13 +75,16 @@ if __name__ == "__main__":
 
     fs = 10
 
+    xlabel = {'p': 'Pressure', 'pv': 'Potential Vorticity'}
+
     # Set plot title and labels
     #plt.title("Histogram of Potential Vorticity")
     plt.title("P1F4R32", fontsize=fs)
     #plt.title("OF2DCyl")
-    plt.xlabel("Potential Vorticity", fontsize=fs)
+    #plt.xlabel("Potential Vorticity", fontsize=fs)
+    plt.xlabel(xlabel[args.cluster_var[0]], fontsize=fs)
     #plt.xlabel("Vorticity")
-    plt.ylabel("Density", fontsize=fs)
+    plt.ylabel("Probability Density", fontsize=fs)
     #plt.yscale('log')
 
     # Set tick label size
@@ -97,5 +102,5 @@ if __name__ == "__main__":
 
     # Save and show the plot
     plt.tight_layout()
-    plt.savefig(os.path.join(args.plot_dir, "subsampling_methods_histograms.png"))
+    plt.savefig(os.path.join(args.plot_dir, f"subsampling_methods_histograms_t{ts}_ns{args.num_samples}.png"))
     plt.close()

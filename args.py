@@ -4,7 +4,16 @@ import yaml
 
 from constants import FieldPredictionType
 
+# Function to load configuration from a YAML file
+def load_config(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as yaml_file:
+            return yaml.safe_load(yaml_file)
+    return {}
+
+# Add the YAML file argument
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("config_file", nargs="?", default=None, help="Path to the YAML configuration file. If not provided, default parameters will be used.")
 archs = ['fcn', 'fcn_sst', 'lstm', 'transformer', 'MLP_transformer', 'CNN_transformer']
 choices = ['maxent', 'random', 'full', 'uips']
 parser.add_argument('-m', '--method', choices=choices, default='maxent', help='subsample method')
@@ -63,8 +72,29 @@ parser.add_argument('--output_dir', type=str, default='./snapshots', help='outpu
 parser.add_argument('--plot_dir', type=str, default='./plots', help='plots directory')
 parser.add_argument("--saveData", default=False, action='store_true', help="Save data.")
 
+# Parse command-line arguments
 args = parser.parse_args()
 
+# Load the YAML config if specified
+if args.config_file:
+    config = load_config(args.config_file)
+else:
+    config = {}
+
+# Process the YAML configuration
+if config:
+    shared_config = config.get("shared", {})
+    subsample_config = config.get("subsample")
+    train_config = config.get("train") 
+    
+    # Merge all configurations
+    all_config = {**shared_config, **subsample_config, **train_config}
+    
+    # Set the attributes in args
+    for key, value in all_config.items():
+        setattr(args, key, value)
+
+# Update derived settings based on configuration
 if args.target == 'drag':
     args.field_prediction_type = FieldPredictionType.GLOBAL
 elif args.target == 'p_full' or args.method == 'full':
@@ -75,18 +105,13 @@ else:
 if args.method == "full": 
         args.num_samples = args.nxsl*args.nysl*args.nzsl 
 
-if args.arch == 'lstm' or args.arch == 'transformer' or args.arch == 'MLP_transformer' or args.arch == 'CNN_transformer': 
+if args.arch in ['lstm', 'transformer', 'MLP_transformer', 'CNN_transformer']: 
     args.sequence = True
-
-fn = './defaults.yaml'
-
-if os.path.exists(fn):
-    with open(fn, 'r') as yaml_file:
-        defaults = yaml.safe_load(yaml_file)
-    for key, value in defaults.items():
-        setattr(args, key, value)
 
 if args.arch == 'lstm' and (args.overlap > args.window - 1 or args.overlap < 0):
     raise ValueError(f"Invalid arguments: overlap ({args.overlap}) must be >= 0 and <= window - 1 ({args.window - 1})")
+
+# Convert cluster_var to a list if it's a string in the YAML config
+if isinstance(args.cluster_var, str): args.cluster_var = [args.cluster_var]
 
 print(args)

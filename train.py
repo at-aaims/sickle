@@ -11,26 +11,25 @@ from sklearn.model_selection import train_test_split
 import dataloader
 from args import args
 from constants import FieldPredictionType
-from helpers import tune, scale, print_stats
+from helpers import scale, print_stats
 from plotting import plot_histograms, plot_ML_outputs, plot_learning_curve
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
-fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
 
 # Set device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 outfilename = f"subsampled_{fileprefix}.npz"
 data = np.load(os.path.join(args.output_dir, outfilename))
-X, Y, target = data['X'], data['Y'], data['target']
+X, Y = data['X'], data['Y']
 
 print(X.shape, Y.shape, len(Y.shape))
 
 if args.sequence:
     print('creating time sequences...')
-    X, Y = dataloader.create_sequences(X, Y, overlap=args.overlap, window_size=args.window, \
-                                       field_prediction_type=args.field_prediction_type)
+    X, Y = dataloader.create_sequences(X, Y, args)
     print(X.shape, Y.shape)
     num_sequences, sequence_length, num_features = X.shape
     num_samples = X.shape[0]
