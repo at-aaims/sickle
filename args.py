@@ -103,7 +103,7 @@ else:
     args.field_prediction_type = FieldPredictionType.LOCAL
 
 if args.method == "full": 
-        args.num_samples = args.nxsl*args.nysl*args.nzsl 
+    args.num_samples = args.nxsl*args.nysl*args.nzsl 
 
 if args.arch in ['lstm', 'transformer', 'MLP_transformer', 'CNN_transformer']: 
     args.sequence = True
