@@ -28,71 +28,53 @@ X, Y = data['X'], data['Y']
 print(X.shape, Y.shape, len(Y.shape))
 
 if args.sequence:
-    print('creating time sequences...')
-    X, Y = dataloader.create_sequences(X, Y, args)
-    print(X.shape, Y.shape)
-    num_sequences, sequence_length, num_features = X.shape
-    num_samples = X.shape[0]
-    if args.field_prediction_type == FieldPredictionType.GLOBAL:
-        Y = Y.reshape(num_sequences, sequence_length)
+    X, Y = dataloader.create_sequences(
+        X, Y, args
+    )
 else:
     Y = np.squeeze(Y)
+print(f"After sequence X: {X.shape}; Y: {Y.shape}")
 
-print('Data shape for network:')
-print(X.shape, Y.shape)
+# transpose shape of X and Y to be [B,T,C,Samples] and [B,T,C,H,W,D]
+if args.method == "full":
+    X = X.transpose(0,1,5,2,3,4)
+else:
+    X = X.transpose(0,1,3,2)
+if args.field_prediction_type == FieldPredictionType.GLOBAL:
+    Y = Y.transpose(0,1,3,2)
+elif args.field_prediction_type == FieldPredictionType.LOCAL:
+    Y = Y.transpose(0,1,3,2)
+elif args.field_prediction_type == FieldPredictionType.FULL:
+    Y = Y.transpose(0,1,5,2,3,4)
+else:
+    raise Exception("Enter a valid `args.target`.")
+print(f"X: {X.shape}; Y: {Y.shape}")
 
-# Split data into train/test
+# train:val split
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_frac, shuffle=False)
-
-print(X_train.shape, Y_train.shape, X_test.shape, Y_test.shape)
-
-if args.arch == 'fcn' or args.arch == 'fcn_sst':
-    # Flatten input so it has only two dimensions: (n_samples, n_features)
-    X = X.reshape(X.shape[0], -1)
-    X_train = X_train.reshape(X_train.shape[0], -1)
-    X_test = X_test.reshape(X_test.shape[0], -1)
-    print_stats('Train', X_train, Y_train)
-    print_stats('Test', X_test, Y_test)
-
-print('train/test shapes:', X_train.shape, Y_train.shape, X_test.shape, Y_test.shape)
-
-if args.plot: plot_histograms(X_train, X_test, Y_train, Y_test)
 
 # Scale the data
 scaler_x = eval(args.xscaler)()
 X_train = scale(scaler_x.fit_transform, X_train)
 X_test = scale(scaler_x.transform, X_test)
-
 if args.yscaler != 'None':
     scaler_y = eval(args.yscaler)()
-    if args.sequence:
-        Y_train = scale(scaler_y.fit_transform, Y_train)
-        Y_test = scale(scaler_y.transform, Y_test)
-    elif args.arch == 'fcn':
-        Y_train = scaler_y.fit_transform(Y_train.reshape(-1, 1))
-        Y_test = scaler_y.transform(Y_test.reshape(-1, 1))
-    else:
-        Y_train = scaler_y.fit_transform(Y_train)
-        Y_test = scaler_y.transform(Y_test)
+    Y_train = scale(scaler_y.fit_transform, Y_train)
+    Y_test = scale(scaler_y.transform, Y_test)
 
-Y_train, Y_test = Y_train / args.yscalefactor, Y_test / args.yscalefactor
-
-print_stats('Train', X_train, Y_train)
-print_stats('Test', X_test, Y_test)
-
-if args.plot: plot_histograms(X_train, X_test, Y_train, Y_test)
-
-# Convert data to PyTorch tensors and move to the appropriate device
-X_train = torch.tensor(X_train, dtype=torch.float32).to(device)
-X_test = torch.tensor(X_test, dtype=torch.float32).to(device)
-Y_train = torch.tensor(Y_train, dtype=torch.float32).to(device)
-Y_test = torch.tensor(Y_test, dtype=torch.float32).to(device)
+# Convert to PyTorch tensors
+X_train = torch.tensor(X_train, dtype=torch.float32)
+X_test = torch.tensor(X_test, dtype=torch.float32)
+Y_train = torch.tensor(Y_train, dtype=torch.float32)
+Y_test = torch.tensor(Y_test, dtype=torch.float32)
+print(f"X_train: {X_train.shape}; X_test: {X_test.shape}")
+print(f"Y_train: {Y_train.shape}; Y_test: {Y_test.shape}")
 
 # Define model
 input_shape = X_train.shape[1:]
 output_shape = Y_train.shape[1:]
 print('**', output_shape)
-model_module = importlib.import_module('archs-pt.' + args.arch)
+model_module = importlib.import_module('archs.' + args.arch)
 model = model_module.build_model(input_shape, output_shape, window=args.window).to(device)
 print(model)
 
@@ -157,5 +139,3 @@ np.savez(os.path.join(args.output_dir, f"{fileprefix}_test.npz"), X_test=X_test.
                                            Y_test=Y_test.cpu().numpy(), \
                                            X_train=X_train.cpu().numpy(), \
                                            Y_train=Y_train.cpu().numpy())
-
-

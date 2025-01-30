@@ -36,6 +36,9 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
     for timestep in range(0, num_timesteps - args.window, args.window):
         indices = subsample_fn(X, args.num_samples, timestep)
 
+        if args.plot and args.method != "full":
+            plot_samples(indices, x, y, z, timestep, args)
+
         for sub_timestep in range(args.window):
             ts = timestep + sub_timestep
             Xout[ts, :, :] = X[ts, indices, :]
@@ -52,9 +55,6 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
                 if args.method == "full":
                     yz_plane = extract_yz_plane(Xout, timestep, 3, 0, nx=args.nxsl, ny=args.nysl, nz=args.nzsl)
                     plot2d_contour(yz_plane, y, z, ts)
-
-            if args.plot and args.method != "full":
-                plot_samples(indices, x, y, z, timestep, args)
     
     return Xout, Yout
 

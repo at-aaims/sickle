@@ -111,7 +111,8 @@ if args.arch in ['lstm', 'transformer', 'MLP_transformer', 'CNN_transformer']:
 if args.arch == 'lstm' and (args.overlap > args.window - 1 or args.overlap < 0):
     raise ValueError(f"Invalid arguments: overlap ({args.overlap}) must be >= 0 and <= window - 1 ({args.window - 1})")
 
-# Convert cluster_var to a list if it's a string in the YAML config
+# Convert cluster_var & output_vars to a list if it's a string in the YAML config
+if isinstance(args.output_vars, str): args.output_vars = [args.output_vars]
 if isinstance(args.cluster_var, str): args.cluster_var = [args.cluster_var]
 
 print(args)
