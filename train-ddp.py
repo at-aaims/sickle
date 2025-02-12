@@ -16,11 +16,11 @@ from constants import *
 from helpers import scale
 
 fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
-outfilename = f"subsampled_{fileprefix}.npz"# Function to set up the distributed environment
+outfilename = f"subsampled_{fileprefix}.npz"  
 
+# Functions to set up the distributed environment
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
-    #os.environ['MASTER_PORT'] = '12355'
     os.environ['MASTER_PORT'] = '3442'
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
@@ -72,7 +72,7 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
             optimizer.step()
             running_loss += loss.item()
 
-        print(f"Rank {rank}, Epoch {epoch + 1}/{args.epochs}, Loss: {running_loss:.4f}")
+        print(f"Rank {rank}, Epoch {epoch + 1}/{args.epochs}, Loss: {running_loss:.4f}", flush=True)
 
     # Save the model (only from rank 0)
     if rank == 0:

@@ -94,8 +94,6 @@ def compute_entropy(clusters, timestep=0, num_bins=50):
         prob_dists.append(prob_dist)
         bin_edges_list.append(bin_edges)
 
-    print("*** counts: ", samples_per_cluster)
-
     # Initialize adjacency matrix
     n_dists = args.num_clusters if args else len(clusters)
     adj_matrix = np.zeros((n_dists, n_dists))

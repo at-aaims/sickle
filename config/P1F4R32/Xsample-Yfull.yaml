@@ -12,15 +12,17 @@ shared:
   plot: true
 
 subsample:
-  method: maxent
+  method: maxent # random or uips
   path: /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/
   num_samples: 100
-  nxsl: 128
-  nysl: 128
-  nzsl: 64
+  num_clusters: 20
+  nxsl: 32
+  nysl: 32
+  nzsl: 32 
 
 train:
-  epochs: 10
+  epochs: 100
+  batch: 4
   patience: 100
   target: p_full
   window: 2

@@ -82,7 +82,7 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
         train_sampler.set_epoch(epoch)  # Shuffle data for this epoch
         running_loss = 0.0
 
-        for batch_X, batch_Y in train_loader:
+        for i, (batch_X, batch_Y) in enumerate(train_loader):
             batch_X, batch_Y = batch_X.to(device), batch_Y.to(device)
             # print(f"Rank {rank}: Batch moved to {device}")
             optimizer.zero_grad()

@@ -38,7 +38,6 @@ def broadcast_large_array(data, comm, root=0):
     
     return data
 
-
 # If uncommenting the following line, comment out the load_data() call below
 #X, Y, cv, x, y, z = parallel_load_data(args.path, args)
 
@@ -54,7 +53,6 @@ if rank == 0:
 
     # Load data
     X, Y, cv, x, y, z = load_data(args.path, args)
-    args.num_samples = X.shape[1]
 
     # Save data for broadcasting to all ranks
     fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}"
@@ -116,6 +114,10 @@ subsample_fn = get_subsample_fn()
 # Process local timesteps
 local_results = []
 for timestep in local_timesteps:
+    print("****", args.num_samples)
+    print(f"[DEBUG] args.num_samples before calling subsample_fn: {args.num_samples}")
+    assert args.num_samples == 100, f"Unexpected args.num_samples: {args.num_samples}"
+
     indices = subsample_fn(X, args.num_samples, timestep)
     local_results.append((timestep, indices))
 

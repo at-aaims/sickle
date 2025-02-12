@@ -76,6 +76,7 @@ output_shape = Y_train.shape[1:]
 print('**', output_shape)
 model_module = importlib.import_module('archs.' + args.arch)
 model = model_module.build_model(input_shape, output_shape, window=args.window).to(device)
+model.to(device)
 print(model)
 
 # Define optimizer and loss function
@@ -120,16 +121,18 @@ def train_model(model, optimizer, criterion, X_train, Y_train, X_test, Y_test, a
 
 train_loss_history, val_loss_history = train_model(model, optimizer, criterion, X_train, Y_train, X_test, Y_test, args)
 plot_learning_curve(train_loss_history, val_loss_history)
-plt.savefig(os.path.join(args.plot_dir, f'{fileprefix}_{args.subsample}_ML_loss-curves.png'), dpi=100, bbox_inches='tight')
+plt.savefig(os.path.join(args.plot_dir, f'{fileprefix}_{args.method}_ML_loss-curves.png'), dpi=100, bbox_inches='tight')
 
 # Evaluate the model
 model.eval()
 with torch.no_grad():
+    X_test = X_test.to(device)
+    Y_test = Y_test.to(device)
     Y_test_ML = model(X_test)
     test_loss = criterion(Y_test_ML, Y_test)
 print(f'Loss ({fileprefix}): {test_loss.item():.04f}')
 plot_ML_outputs(Y_test_ML[0, :].cpu().numpy().reshape(-1, 1), Y_test[0, :].cpu().numpy().reshape(-1, 1))
-plt.savefig(os.path.join(args.plot_dir, f'{fileprefix}_{args.subsample}_ML_output.png'), dpi=100, bbox_inches='tight')
+plt.savefig(os.path.join(args.plot_dir, f'{fileprefix}_{args.method}_ML_output.png'), dpi=100, bbox_inches='tight')
 
 # Save model
 model_path = f"models/{args.arch}"

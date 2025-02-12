@@ -1,0 +1,29 @@
+shared:
+  dims: 3
+  dtype: sst-binary
+  noseed: true
+  input_vars: [u, v, w, r]
+  output_vars: [p]
+  cluster_var: pv
+  nx: 514
+  ny: 512
+  nz: 256
+  gravity: z
+  plot: true
+
+subsample:
+  method: full
+  path: /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/
+  num_samples: 100
+  nxsl: 32
+  nysl: 32
+  nzsl: 32 
+
+train:
+  epochs: 10
+  batch: 4
+  patience: 100
+  target: p_full
+  window: 2
+  arch: CNN_transformer
+  sequence: true
