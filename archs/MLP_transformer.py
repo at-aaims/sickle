@@ -60,7 +60,7 @@ class MLP_transformer(nn.Module):
     def forward(self, x):
         # Input encoder: [B,T,C,Samples] -> [B,T,C]
         x = self.activation(self.fc1(x)) # [B,T,C,Samp] -> [B,T,C,1]
-        x = torch.squeeze(x) # [B,T,C]
+        x = torch.squeeze(x, dim=-1) # [B,T,C]
 
         # Tranformer: [B,T,C] -> [B,T,emb]
         x = self.embedding(x) # [B,T,C] -> [B,T,emb]
