@@ -10,12 +10,12 @@ def create_output_dir(jobid):
     output_dir.mkdir(exist_ok=True)
     return output_dir
 
-def take_snapshot(phase):
+def take_snapshot(label):
     jobid = os.environ.get('SLURM_JOBID', 'local_job')
     nodeid = os.environ.get('SLURM_NODEID', '0')
     hostname = os.uname().nodename
     output_dir = create_output_dir(jobid)
-    snapshot_file = output_dir / f"{nodeid}_snapshot_{phase}.json"
+    snapshot_file = output_dir / f"{nodeid}_snapshot_{label}.json"
     
     # Define the energy counter file paths
     energy_files = {
@@ -28,19 +28,18 @@ def take_snapshot(phase):
         'Node': '/sys/cray/pm_counters/energy'
     }
     
+    # Use time.perf_counter() for high-resolution elapsed time measurement
     snapshot = {
-        "timestamp": time.perf_counter(),
-        "timestamp_readable": time.ctime(),  # human-readable
+        "timestamp": time.perf_counter(),        # high-resolution timer (seconds)
+        "timestamp_readable": time.ctime(),        # human-readable system time
         "hostname": hostname,
-        "phase": phase
+        "phase": label
     }
     
     for key, path in energy_files.items():
         try:
             with open(path) as f:
                 raw_value = f.read().strip()
-                # Debug print if needed:
-                # print(f"DEBUG: Read from {path}: '{raw_value}'")
                 # Extract the first token (the numeric energy value)
                 numeric_str = raw_value.split()[0]
                 snapshot[key] = float(numeric_str)
@@ -52,92 +51,97 @@ def take_snapshot(phase):
     with open(snapshot_file, 'w') as f:
         json.dump(snapshot, f, indent=2)
     
-    print(f"Snapshot ({phase}) saved to {snapshot_file}")
+    print(f"Snapshot ('{label}') saved to {snapshot_file}")
 
-def report_delta():
+def report_snapshots():
+    """
+    Scans for all snapshots for the current node,
+    sorts them by timestamp, and computes differences.
+    """
     jobid = os.environ.get('SLURM_JOBID', 'local_job')
     nodeid = os.environ.get('SLURM_NODEID', '0')
     output_dir = create_output_dir(jobid)
     
-    start_file = output_dir / f"{nodeid}_snapshot_start.json"
-    end_file = output_dir / f"{nodeid}_snapshot_end.json"
-    
-    try:
-        with open(start_file) as f:
-            start_snapshot = json.load(f)
-        with open(end_file) as f:
-            end_snapshot = json.load(f)
-    except Exception as e:
-        print("Error loading snapshots:", e)
+    # Get list of snapshot files for this node (e.g., "0_snapshot_*.json")
+    snapshot_files = sorted(output_dir.glob(f"{nodeid}_snapshot_*.json"))
+    if not snapshot_files:
+        print("No snapshot files found.")
         return
     
-    delta = {}
-    total_energy = 0.0
-    # Energy keys for which we want to compute a total energy consumption
+    snapshots = []
+    for file in snapshot_files:
+        try:
+            with open(file) as f:
+                snap = json.load(f)
+                snapshots.append(snap)
+        except Exception as e:
+            print(f"Error reading {file}: {e}")
+    
+    # Sort snapshots by their high-resolution timestamp
+    snapshots.sort(key=lambda s: s["timestamp"])
+    
+    # List available snapshots
+    print("Available snapshots:")
+    for snap in snapshots:
+        print(f"  Phase: {snap.get('phase', 'unknown')}, Time: {snap['timestamp_readable']}")
+    
+    # Now compute differences between consecutive snapshots
+    print("\nReport for consecutive snapshot intervals:")
     energy_keys = ["CPU", "Mem", "Accel0", "Accel1", "Accel2", "Accel3"]
     
+    for i in range(len(snapshots) - 1):
+        s1 = snapshots[i]
+        s2 = snapshots[i+1]
+        elapsed_time = s2["timestamp"] - s1["timestamp"]
+        total_energy = 0.0
+        print(f"\nInterval: '{s1.get('phase')}' ({s1['timestamp_readable']}) -> '{s2.get('phase')}' ({s2['timestamp_readable']})")
+        for key in energy_keys:
+            try:
+                delta_value = s2.get(key, 0) - s1.get(key, 0)
+                total_energy += delta_value
+                print(f"  {key}: {delta_value} Joules")
+            except Exception as e:
+                print(f"  Error computing delta for {key}: {e}")
+        avg_power = total_energy / elapsed_time if elapsed_time > 0 else None
+        print(f"  Total Energy: {total_energy} Joules")
+        print(f"  Elapsed Time: {elapsed_time:.2f} seconds")
+        if avg_power is not None:
+            print(f"  Average Power: {avg_power:.2f} Watts")
+        else:
+            print("  Average Power: not available")
+    
+    # Optionally, also compute overall difference (first to last)
+    overall_elapsed = snapshots[-1]["timestamp"] - snapshots[0]["timestamp"]
+    overall_energy = 0.0
     for key in energy_keys:
-        try:
-            delta_value = end_snapshot[key] - start_snapshot[key]
-            delta[key] = delta_value  # in Joules
-            total_energy += delta_value
-        except Exception as e:
-            print(f"Error computing delta for {key}: {e}")
-            delta[key] = None
-
-    # Compute delta for Node energy
-    try:
-        node_delta = end_snapshot["Node"] - start_snapshot["Node"]
-    except Exception as e:
-        print("Error computing delta for Node energy:", e)
-        node_delta = None
-
-    # Compute elapsed time (in seconds) using the stored epoch timestamps
-    try:
-        elapsed_time = end_snapshot["timestamp"] - start_snapshot["timestamp"]
-    except Exception as e:
-        print("Error computing elapsed time:", e)
-        elapsed_time = None
-
-    # Compute average power if elapsed_time is valid and > 0
-    if elapsed_time and elapsed_time > 0:
-        avg_power = total_energy / elapsed_time  # in Watts (Joules per second)
+        overall_energy += snapshots[-1].get(key, 0) - snapshots[0].get(key, 0)
+    overall_avg_power = overall_energy / overall_elapsed if overall_elapsed > 0 else None
+    
+    print("\nOverall Summary (first snapshot to last snapshot):")
+    print(f"  Overall Energy: {overall_energy} Joules")
+    print(f"  Overall Elapsed Time: {overall_elapsed:.2f} seconds")
+    if overall_avg_power is not None:
+        print(f"  Overall Average Power: {overall_avg_power:.2f} Watts")
     else:
-        avg_power = None
-
-    # Report
-    print("Energy consumption during the run:")
-    for key, value in delta.items():
-        print(f"  {key}: {value} Joules")
-    print(f"Total (CPU + Mem + Accel0 + Accel1 + Accel2 + Accel3): {total_energy} Joules")
-    print(f"Node Energy Delta: {node_delta} Joules")
-    if elapsed_time is not None:
-        print(f"Elapsed Time: {elapsed_time:.2f} seconds")
-    else:
-        print("Elapsed Time: not available")
-    if avg_power is not None:
-        print(f"Average Power: {avg_power:.2f} Watts")
-    else:
-        print("Average Power: not available")
+        print("  Overall Average Power: not available")
 
 def main():
-    parser = argparse.ArgumentParser(description="Energy monitoring tool")
+    parser = argparse.ArgumentParser(description="Energy monitoring tool with lap functionality")
     subparsers = parser.add_subparsers(dest="command", required=True)
     
-    # Subcommand for taking a snapshot
-    parser_snapshot = subparsers.add_parser("snapshot", help="Take an energy snapshot")
-    parser_snapshot.add_argument("phase", choices=["start", "end"],
-                                 help="Phase of the measurement (start/end)")
+    # Allow any label for snapshot
+    parser_snapshot = subparsers.add_parser("snapshot", help="Take an energy snapshot with a custom label (e.g., start, lap, end)")
+    parser_snapshot.add_argument("label", help="Label for the snapshot (e.g. start, lap, end)")
     
-    # Subcommand for reporting the delta
-    parser_report = subparsers.add_parser("report", help="Report energy consumption and average power")
+    # Report command to analyze snapshots
+    parser_report = subparsers.add_parser("report", help="Report energy consumption between snapshots")
     
     args = parser.parse_args()
     
     if args.command == "snapshot":
-        take_snapshot(args.phase)
+        take_snapshot(args.label)
     elif args.command == "report":
-        report_delta()
+        report_snapshots()
 
 if __name__ == "__main__":
     main()
