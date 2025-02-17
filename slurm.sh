@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH -A STF218
 #SBATCH -J sickle
-#SBATCH -q batch
-#SBATCH -N 2
-#SBATCH -n 16
+##SBATCH -q debug
+#SBATCH -N 1
+#SBATCH -n 8
 #SBATCH -t 01:00:00
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
