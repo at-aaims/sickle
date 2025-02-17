@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -A STF218
 #SBATCH -J sickle
-#SBATCH -q debug
+#SBATCH -q batch
 #SBATCH -N 2
 #SBATCH -n 16
 #SBATCH -t 01:00:00
