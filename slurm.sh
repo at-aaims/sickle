@@ -15,7 +15,7 @@ module purge
 source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
 
 module load PrgEnv-cray-amd
-srun -N $SLURM_NODES -n 8 python subsample-mpi.py $CASE
+srun -N $SLURM_NNODES -n 8 python subsample-mpi.py $CASE
 
 ### START ENERGY BENCHMARKING
 
