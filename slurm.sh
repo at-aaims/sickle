@@ -14,13 +14,16 @@ CASE=config/P1F4R32/sample-reconstruction.yaml
 module purge
 source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
 
+# Take energy snapshot
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python energy.py snapshot start
+
 module load PrgEnv-cray-amd
 srun -N $SLURM_NNODES -n 8 python subsample-mpi.py $CASE
 
 ### START ENERGY BENCHMARKING
 
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap ./energy/power_dump.sh &
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap ./energy/read_energy.sh
+# Take energy snapshot
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python energy.py snapshot lap
 
 ### TRAINING
 
@@ -44,7 +47,8 @@ module load rocm/5.7.1
 
 srun -N $SLURM_NNODES -n8 python -u train-ddp-multinode.py $CASE
 
-# Check power again
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap ./energy/read_energy.sh
+# Take energy snapshot
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python energy.py snapshot end
 
-#scancel $SLURM_JOB_ID
+# Generate energy usage report
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python energy.py report
