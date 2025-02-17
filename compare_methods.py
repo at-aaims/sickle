@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import os
 
 from args import args
-from helpers import load_data
 from algorithms import create_maxent_subsampler, subsample_random, subsample_uips, build_pdf
+from dataloaders import load_data
 from scipy.stats import gaussian_kde
 
 

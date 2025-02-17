@@ -3,8 +3,8 @@ import os
 from mpi4py import MPI
 from algorithms import create_maxent_subsampler, subsample_random
 from args import args
-from dataloader_mpi import parallel_load_data
-from helpers import check_and_create_dirs, load_data
+from dataloaders import load_data, parallel_load_data
+from helpers import check_and_create_dirs
 
 
 def broadcast_large_array(data, comm, root=0):

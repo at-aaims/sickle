@@ -1,3 +1,4 @@
+import importlib
 import numpy as np
 import os
 import time
@@ -5,12 +6,15 @@ from constants import *
 
 from matplotlib import pyplot as plt
 
+
 def compute_euclidean_distance(x, y):
     return np.sqrt(x**2 + y**2)
+
 
 def scale(func, x):
     """convert data to 2D scale and reshape back to 3D"""
     return func(x.reshape(-1, x.shape[-1])).reshape(x.shape)
+
 
 def scale_probabilities(probs, a=0.01, b=0.99):
     """
@@ -27,6 +31,7 @@ def scale_probabilities(probs, a=0.01, b=0.99):
     scaled_probs = [(x - A) * (b - a) / (B - A) + a for x in probs]
     return np.array(scaled_probs)
 
+
 def print_stats(label, X, Y):
 
     stats = lambda x : f"min: {np.amin(x):.04f}, mean: {np.mean(x):.04f}, max: {np.amax(x):.04f}"
@@ -37,11 +42,13 @@ def print_stats(label, X, Y):
     print('X[1]:', stats(X[:, 1]))
     print('Y:', stats(Y[:]))
 
+
 def verbose_io(func):
     def wrapper(*args, **kwargs):
         print(f"{func.__name__} {args[0]}")
         return func(*args, **kwargs)
     return wrapper
+
 
 @verbose_io
 def load(*args, **kwargs):
@@ -113,22 +120,3 @@ def check_and_create_dirs(directory):
     """ Checks if a directory exists, and creates it if it doesn't.  """
     if not os.path.exists(directory):
         os.makedirs(directory)
-
-def load_data(path, args):
-    """ Loads data based on the specified type in args.  """
-    from dataloader import DataLoaderCSV, DataLoaderNPZ, DataLoaderSSTBinary, DataLoaderOF
-
-    if args.dtype == "csv":
-        dl = DataLoaderCSV(args.path, dims=args.dims)
-    elif args.dtype == "npz":
-        dl = DataLoaderNPZ(args.path)
-    elif args.dtype == "sst-binary":
-        dl = DataLoaderSSTBinary(args)
-    else:
-        dl = DataLoaderOF(args.path, dims=args.dims)
-
-    x, y, z = dl.load_xyz()
-    X, Y, cv = dl.load_multiple_timesteps(
-        args.write_interval, args.num_timesteps, target=args.target, cv=args.cluster_var
-    )
-    return X, Y, cv, x, y, z
