@@ -19,8 +19,10 @@ srun -N $SLURM_NNODES -n 8 python subsample-mpi.py $CASE
 
 ### START ENERGY BENCHMARKING
 
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap ./energy/power_dump.sh &
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap ./energy/read_energy.sh
+#srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap ./energy/power_dump.sh &
+#srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap ./energy/read_energy.sh
+
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python energy.py snapshot start
 
 ### TRAINING
 
@@ -45,6 +47,10 @@ module load rocm/5.7.1
 srun -N $SLURM_NNODES -n8 python -u train-ddp-multinode.py $CASE
 
 # Check power again
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap ./energy/read_energy.sh
+#srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap ./energy/read_energy.sh
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python energy.py snapshot end
+
+# Product report
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python energy.py report
 
 #scancel $SLURM_JOB_ID
