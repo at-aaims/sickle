@@ -6,7 +6,7 @@ Read SST data and save as .npy file. Example usage:
 """
 import numpy as np
 from args import args
-from helpers import load_data
+from dataloaders import load_data
 
 # Load the data
 X, Y, cv, x, y, z = load_data(args.path, args)

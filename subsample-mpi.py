@@ -3,8 +3,8 @@ import os
 from mpi4py import MPI
 from algorithms import create_maxent_subsampler, subsample_random
 from args import args
-from dataloader_mpi import parallel_load_data
-from helpers import check_and_create_dirs, load_data
+from dataloaders import load_data, parallel_load_data
+from helpers import check_and_create_dirs
 
 
 def broadcast_large_array(data, comm, root=0):
@@ -39,7 +39,7 @@ def broadcast_large_array(data, comm, root=0):
     return data
 
 # If uncommenting the following line, comment out the load_data() call below
-#X, Y, cv, x, y, z = parallel_load_data(args.path, args)
+#X, Y, cv, x, y, z = parallel_load_data(args)
 
 # Initialize MPI
 comm = MPI.COMM_WORLD
@@ -52,7 +52,7 @@ if rank == 0:
     check_and_create_dirs(args.plot_dir)
 
     # Load data
-    X, Y, cv, x, y, z = load_data(args.path, args)
+    X, Y, cv, x, y, z = load_data(args)
 
     # Save data for broadcasting to all ranks
     fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}"

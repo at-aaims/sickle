@@ -3,9 +3,10 @@ import os
 import sys
 
 from args import args 
-from helpers import check_and_create_dirs, load_data
 from algorithms import create_maxent_subsampler, subsample_random, subsample_uips, build_pdf
 from constants import FieldPredictionType
+from dataloaders import load_data
+from helpers import check_and_create_dirs
 from plotting import plot_samples, plot2d_contour, plot_corner
 
 
@@ -65,7 +66,7 @@ if __name__ == "__main__":
     check_and_create_dirs(args.plot_dir)
 
     # Load the data
-    X, Y, cv, x, y, z = load_data(args.path, args)
+    X, Y, cv, x, y, z = load_data(args)
     num_timesteps = X.shape[0] // args.window * args.window + 1
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
 
