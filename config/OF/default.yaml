@@ -1,0 +1,23 @@
+
+shared:
+  dims: 3
+  dtype: openfoam
+  noseed: true
+  output_vars: drag
+  cluster_var: wz
+  plot: true
+
+subsample:
+  method: maxent # random or uips
+  path: /lustre/orion/proj-shared/gen150/dsml/data/cylinder
+  num_samples: 540
+  num_clusters: 20
+
+train:
+  epochs: 100
+  batch: 4
+  patience: 100
+  target: p
+  window: 2
+  arch: fcn
+  sequence: true
