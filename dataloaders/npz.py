@@ -68,6 +68,8 @@ class DataLoaderNPZ(DataLoader):
 
         return X, Y, cv_arr
 
+DataLoader = DataLoaderNPZ
+
 if __name__ == "__main__":
     # Simple test code for DataLoaderNPZ.
     test_path = "path/to/npz_file.npz"

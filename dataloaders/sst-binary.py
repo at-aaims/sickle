@@ -116,6 +116,9 @@ class DataLoaderSSTBinary(DataLoader):
 
         return X, Y, cv_arr
 
+DataLoader = DataLoaderSSTBinary
+
+
 if __name__ == "__main__":
     # Simple test code for DataLoaderSSTBinary.
     class DummyArgs:

@@ -59,6 +59,8 @@ class DataLoaderOF(DataLoader):
 
         return X, Y, cv
 
+DataLoader = DataLoaderOF
+
 if __name__ == "__main__":
     # Simple test code for DataLoaderOF.
     # Make sure to set test_path to a valid OpenFOAM case directory.

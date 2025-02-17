@@ -50,6 +50,7 @@ parser.add_argument('-v', '--verbose', action='store_true', default=False, help=
 parser.add_argument('--overlap', type=int, default=1, help='number of time steps to overlap windows')
 parser.add_argument('--window', type=int, default=2, help='time window sequence size')
 parser.add_argument('--write_interval', type=int, default=100, help='OpenFOAM write interval')
+
 # SST data args
 parser.add_argument("--nx", type=int, default=512+2, required=False, help="number of grid points in x dir for full data")
 parser.add_argument("--ny", type=int, default=512, required=False, help="number of grid points in y dir for full data")

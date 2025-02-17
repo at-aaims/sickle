@@ -36,7 +36,7 @@ def load_data(args):
          X, Y, cv, x, y, z
     """
     module = importlib.import_module("dataloaders." + args.dtype)
-    DataLoaderClass = module.DataLoader  # each module must expose its main class as DataLoader
+    DataLoaderClass = module.DataLoader
 
     # For loaders (like sst-binary) that require the full args object
     if args.dtype == "sst-binary":
