@@ -9,10 +9,10 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, PowerTransformer
 import importlib
-import dataloader
-from helpers import scale
 from args import args
 from constants import *
+from dataloaders import create_sequences
+from helpers import scale
 
 fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
 outfilename = f"subsampled_{fileprefix}.npz"
@@ -114,9 +114,7 @@ def main():
    
     # make timeseries to sequences
     if args.sequence:
-        X, Y = dataloader.create_sequences(
-            X, Y, args
-        )
+        X, Y = create_sequences(X, Y, args)
     else:
         Y = np.squeeze(Y)
     print(f"After sequence X: {X.shape}; Y: {Y.shape}")

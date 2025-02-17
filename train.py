@@ -8,9 +8,9 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, PowerTransformer
 from sklearn.model_selection import train_test_split
 
-import dataloader
 from args import args
 from constants import FieldPredictionType
+from dataloaders import create_sequences
 from helpers import scale, print_stats
 from plotting import plot_histograms, plot_ML_outputs, plot_learning_curve
 import matplotlib.pyplot as plt
@@ -28,9 +28,7 @@ X, Y = data['X'], data['Y']
 print(X.shape, Y.shape, len(Y.shape))
 
 if args.sequence:
-    X, Y = dataloader.create_sequences(
-        X, Y, args
-    )
+    X, Y = create_sequences(X, Y, args)
 else:
     Y = np.squeeze(Y)
 print(f"After sequence X: {X.shape}; Y: {Y.shape}")

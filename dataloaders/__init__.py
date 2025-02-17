@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import importlib
+from constants import FieldPredictionType
 
 # -------------------------------------------------------------------
 # Parent Class
@@ -173,3 +174,60 @@ def parallel_load_data(args, subsample=True):
         all_results = None
 
     return X, Y, cv, x, y, z, all_results
+
+
+def create_sequences(X, Y, args):
+    """
+    Create time sequences of a given window size (W) from the input arrays X and Y with specified overlap.
+
+    X: [T, [X,Y,Z]-or-NSAMPLES, C] -> [B, W, [X,Y,Z]-or-NSAMPLES, C]
+    Y: [T, [X,Y,Z]-or-NSAMPLES, C] -> [B, W, [X,Y,Z]-or-NSAMPLES, C]
+    W: window size
+    B: number of sequences (or total batch)
+    """
+
+    # Get sequence parameters from args
+    overlap = args.overlap
+    window_size = args.window
+    field_prediction_type = args.field_prediction_type
+
+    # Get dimensions of X & Y
+    if args.method == "full":
+        nt, nx, ny, nz, nvars_X = X.shape
+    else:
+        nt, nsamples, nvars_X = X.shape
+
+    if field_prediction_type == FieldPredictionType.FULL:
+        nx, ny, nz, nvars_Y = Y.shape[1:]
+    else:
+        nvars_Y = Y.shape[-1]
+
+    # Determine sequence info
+    stride = window_size - overlap
+    assert stride > 0, f"window_size ({window_size}) must be > overlap ({overlap})"
+    num_sequences = (nt - window_size) // stride + 1
+
+    # Initialize sequence arrays
+    if args.method == "full":
+        X_sequences = np.zeros((num_sequences, window_size, nx, ny, nz, nvars_X))
+    else:
+        X_sequences = np.zeros((num_sequences, window_size, nsamples, nvars_X))
+
+    if field_prediction_type == FieldPredictionType.GLOBAL:  # global quantity prediction
+        Y_sequences = np.zeros((num_sequences, window_size, 1, nvars_Y))
+    elif field_prediction_type == FieldPredictionType.LOCAL:  # local field prediction
+        if args.method == "full":
+            raise Exception("For baseline full field input, prediction cannot be subsampled. Change `args.target`.")
+        Y_sequences = np.zeros((num_sequences, window_size, nsamples, nvars_Y))
+    elif field_prediction_type == FieldPredictionType.FULL:  # full field prediction
+        Y_sequences = np.zeros((num_sequences, window_size, nx, ny, nz, nvars_Y))
+    else:
+        raise Exception("Enter a valid `args.target`.")
+
+    # Get and store sequence data
+    for i in range(num_sequences):
+        start_index = i * stride
+        X_sequences[i] = X[start_index:start_index + window_size].reshape(X_sequences.shape[1:])
+        Y_sequences[i] = Y[start_index:start_index + window_size].reshape(Y_sequences.shape[1:])
+
+    return X_sequences, Y_sequences
