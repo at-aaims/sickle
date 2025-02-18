@@ -26,7 +26,7 @@ source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
 srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapshot start
 
 module load PrgEnv-cray-amd
-srun -N $SLURM_NNODES -n 8 python $SRC/subsample-mpi.py $CASE
+srun -N $SLURM_NNODES -n 32 python $SRC/subsample-mpi.py $CASE
 
 ### START ENERGY BENCHMARKING
 
