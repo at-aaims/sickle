@@ -1,29 +1,37 @@
 #!/bin/bash
 #SBATCH -A STF218
 #SBATCH -J sickle
-##SBATCH -q debug
+#SBATCH -p extended  # partition
+##SBATCH -q debug # priority
 #SBATCH -N 1
 #SBATCH -n 8
-#SBATCH -t 01:00:00
+#SBATCH -t 04:00:00
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
 
-CASE=config/P1F4R32/sample-reconstruction.yaml
+RUNDIR=$MEMBERWORK/stf218/sickle-${SLURM_JOB_ID}
+mkdir -p $RUNDIR $RUNDIR/snapshots $RUNDIR/plots
+CASE=baseline-reconstruction.yaml
+CASEPATH=config/exp0/$CASE
+
+cp $CASEPATH $RUNDIR && cd $RUNDIR
+
+SRC=/lustre/orion/proj-shared/gen150/dsml/sickle
 
 ### SUBSAMPLING 
 module purge
 source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
 
 # Take energy snapshot
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python energy.py snapshot start
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapshot start
 
 module load PrgEnv-cray-amd
-srun -N $SLURM_NNODES -n 8 python subsample-mpi.py $CASE
+srun -N $SLURM_NNODES -n 8 python $SRC/subsample-mpi.py $CASE
 
 ### START ENERGY BENCHMARKING
 
 # Take energy snapshot
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python energy.py snapshot lap
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapshot lap
 
 ### TRAINING
 
@@ -45,10 +53,10 @@ echo "World Size: $WORLD_SIZE, Node Rank: $NODE_RANK, Master Addr: $MASTER_ADDR,
 source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
 module load rocm/5.7.1
 
-srun -N $SLURM_NNODES -n8 python -u train-ddp-multinode.py $CASE
+srun -N $SLURM_NNODES -n 8 python -u $SRC/train-ddp-multinode.py $CASE
 
 # Take energy snapshot
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python energy.py snapshot end
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapshot end
 
 # Generate energy usage report
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python energy.py report
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py report
