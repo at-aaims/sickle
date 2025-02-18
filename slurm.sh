@@ -26,7 +26,7 @@ source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
 srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapshot start
 
 module load PrgEnv-cray-amd
-srun -N $SLURM_NNODES -n 32 python $SRC/subsample-mpi.py $CASE
+time srun -N $SLURM_NNODES -n 32 python $SRC/subsample-mpi.py $CASE
 
 ### START ENERGY BENCHMARKING
 
@@ -53,7 +53,7 @@ echo "World Size: $WORLD_SIZE, Node Rank: $NODE_RANK, Master Addr: $MASTER_ADDR,
 source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
 module load rocm/5.7.1
 
-srun -N $SLURM_NNODES -n 8 python -u $SRC/train-ddp-multinode.py $CASE
+time srun -N $SLURM_NNODES -n 8 python -u $SRC/train-ddp-multinode.py $CASE
 
 # Take energy snapshot
 srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapshot end
