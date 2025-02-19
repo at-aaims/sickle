@@ -11,13 +11,14 @@ from helpers import check_and_create_dirs
 from plotting import plot_samples, plot2d_contour, plot_corner
 
 
-def save_vtu(Xout, x, y, z, indices, output_dir, fileprefix):
+def save_vtu(Xout, Yout, x, y, z, indices, output_dir, fileprefix):
     """
     Saves all timesteps in VTU (Unstructured Grid) format for time-series visualization in ParaView.
 
-    Xout: shape (num_timesteps, num_samples, num_features)  # Features = (u, v, w, rho)
-    x, y, z: shape (32,) - Grid coordinates (1D arrays)
-    indices: shape (num_timesteps, num_samples) - Indices of subsampled points in a flattened (32,32,32) grid
+    Xout: (num_timesteps, num_samples, 4)  # Features: u, v, w, rho
+    Yout: (num_timesteps, 32768, 1)  # Full field prediction, 1 target feature
+    x, y, z: (32,)  # Grid coordinates (1D arrays)
+    indices: (num_timesteps, num_samples)  # Indices of subsampled points in a flattened (32,32,32) grid
     """
     num_timesteps = Xout.shape[0]  # Number of time steps
     num_samples = Xout.shape[1]  # Number of subsampled points per timestep
@@ -35,26 +36,26 @@ def save_vtu(Xout, x, y, z, indices, output_dir, fileprefix):
 
     for timestep in range(num_timesteps - 1):
         # Step 3: Extract subsampled spatial coordinates using indices
-        print(timestep, indices[timestep])
         subsampled_points = grid_points[indices[timestep]]  # Shape: (num_samples, 3)
 
         # Define connectivity: each point is a separate vertex cell
         cells = np.hstack([np.ones((num_samples, 1), dtype=int), np.arange(num_samples).reshape(-1, 1)]).flatten()
 
-        # Create UnstructuredGrid with proper connectivity
-        point_cloud = pv.UnstructuredGrid(cells, np.full(num_samples, pv.CellType.VERTEX), subsampled_points)
+        # Create UnstructuredGrid for subsampled data
+        subsampled_grid = pv.UnstructuredGrid(cells, np.full(num_samples, pv.CellType.VERTEX), subsampled_points)
 
-        # Store velocity (u, v, w) and density (rho) as point data
-        feature_names = ["u", "v", "w", "rho"]  # Rename features for clarity in ParaView
+        # Store velocity (u, v, w) and density (rho) as point data for subsampled points
+        feature_names = ["u", "v", "w", "rho"]
         for i, name in enumerate(feature_names):
-            point_cloud.point_data[name] = Xout[timestep, :, i]
+            subsampled_grid.point_data[name] = Xout[timestep, :, i]
 
-        # Set default color variable in ParaView (optional)
-        point_cloud.active_scalars_name = "rho"  # Default to coloring by density
+        # Add Yout (subsampled target) to the same subsampled grid
+        yout_subsampled = Yout[timestep, indices[timestep], 0]  # Shape: (num_samples,)
+        subsampled_grid.point_data["pv"] = yout_subsampled
 
         # Save each timestep as a VTU file
         vtu_filename = os.path.join(output_dir, f"subsampled_{fileprefix}_t{timestep}.vtu")
-        point_cloud.save(vtu_filename)
+        subsampled_grid.save(vtu_filename)
         vtu_filenames.append((timestep, vtu_filename))
 
     # Generate a PVD file for time animation
@@ -162,18 +163,19 @@ if __name__ == "__main__":
     Xout, Yout, indices_list = subsample_data(X, Y, x, y, z, subsample_fn, args)
     print(f"Xout: {Xout.shape}; Yout: {Yout.shape}")
 
+    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
+    # Save to VTK
+    save_vtu(Xout, Yout, x, y, z, indices_list, args.output_dir, fileprefix)
+
     # Reshape Xout and Yout to 1D or 3D based on args.method and args.field_prediction_type
     if args.method == "full":
         Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[2])
+
     if args.field_prediction_type == FieldPredictionType.FULL:
         Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[2])
 
     # Save output
-    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
     outfilename = f"subsampled_{fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
     np.savez(outfile, X=Xout, Y=Yout, x=x, y=y, z=z)
     print(f'Subsampled data saved to {outfile}')
-
-    # Save to VTK
-    save_vtu(Xout, x, y, z, indices_list, args.output_dir, fileprefix)
