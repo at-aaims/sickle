@@ -48,7 +48,11 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()  # Rank of the current process
 size = comm.Get_size()  # Total number of processes
 
+print(f"Rank {rank} sees output_dir = {args.output_dir}")
+
 if rank == 0:
+    print(f"*** TOTAL NUMBER OF PROCESSES: {size} *************")
+
     # Ensure output directory
     check_and_create_dirs(args.output_dir)
     check_and_create_dirs(args.plot_dir)

@@ -1,15 +1,16 @@
 #!/bin/bash
 #SBATCH -A STF218
 #SBATCH -J sickle
-#SBATCH -p extended  # partition
-#SBATCH -N 4
+#SBATCH -p batch  # partition
+#SBATCH -q debug
+#SBATCH -N 1
 #SBATCH -S 0  # override -S 8 default setting to allow use of 64 procs/node
-#SBATCH -t 04:00:00
-#SBATCH -o %x_%j.out
-#SBATCH -e %x_%j.err
+#SBATCH -t 01:00:00
+#SBATCH -o /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
+#SBATCH -e /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.err
 
-RUNDIR=$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}
-mkdir -p $RUNDIR $RUNDIR/snapshots $RUNDIR/plots
+RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
+mkdir -p $RUNDIR "$RUNDIR/snapshots" "$RUNDIR/plots"
 CASE=baseline-reconstruction.yaml
 CASEPATH=config/exp0/$CASE
 
@@ -28,7 +29,7 @@ srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapsh
 
 module load PrgEnv-cray-amd
 time srun -N $SLURM_NNODES --ntasks-per-node=64 python $SRC/subsample-mpi.py \
-                           --output_dir $RUNDIR/snapshots $CASE
+                           --output_dir "$RUNDIR/snapshots" $CASE
 
 ### START ENERGY BENCHMARKING
 
