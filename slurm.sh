@@ -2,19 +2,20 @@
 #SBATCH -A STF218
 #SBATCH -J sickle
 #SBATCH -p extended  # partition
-##SBATCH -q debug # priority
-#SBATCH -N 1
-#SBATCH -n 8
+#SBATCH -N 4
+#SBATCH -S 0  # override -S 8 default setting to allow use of 64 procs/node
 #SBATCH -t 04:00:00
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
 
-RUNDIR=$MEMBERWORK/stf218/sickle-${SLURM_JOB_ID}
+RUNDIR=$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}
 mkdir -p $RUNDIR $RUNDIR/snapshots $RUNDIR/plots
 CASE=baseline-reconstruction.yaml
 CASEPATH=config/exp0/$CASE
 
-cp $CASEPATH $RUNDIR && cd $RUNDIR
+cp $CASEPATH $RUNDIR
+cp slurm.sh $RUNDIR  # for reproducibility
+cd $RUNDIR
 
 SRC=/lustre/orion/proj-shared/gen150/dsml/sickle
 
@@ -26,7 +27,8 @@ source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
 srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapshot start
 
 module load PrgEnv-cray-amd
-time srun -N $SLURM_NNODES -n 32 python $SRC/subsample-mpi.py $CASE
+time srun -N $SLURM_NNODES --ntasks-per-node=64 python $SRC/subsample-mpi.py \
+                           --output_dir $RUNDIR/snapshots $CASE
 
 ### START ENERGY BENCHMARKING
 
@@ -53,7 +55,7 @@ echo "World Size: $WORLD_SIZE, Node Rank: $NODE_RANK, Master Addr: $MASTER_ADDR,
 source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
 module load rocm/5.7.1
 
-time srun -N $SLURM_NNODES -n 8 python -u $SRC/train-ddp-multinode.py $CASE
+time srun -N $SLURM_NNODES --ntasks-per-node=8 python -u $SRC/train-ddp-multinode.py $CASE
 
 # Take energy snapshot
 srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapshot end
