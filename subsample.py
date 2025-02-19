@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import pyvista as pv
 import sys
 
 from args import args 
@@ -8,6 +9,65 @@ from constants import FieldPredictionType
 from dataloaders import load_data
 from helpers import check_and_create_dirs
 from plotting import plot_samples, plot2d_contour, plot_corner
+
+
+def save_vtu(Xout, x, y, z, indices, output_dir, fileprefix):
+    """
+    Saves all timesteps in VTU (Unstructured Grid) format for time-series visualization in ParaView.
+
+    Xout: shape (num_timesteps, num_samples, num_features)  # Features = (u, v, w, rho)
+    x, y, z: shape (32,) - Grid coordinates (1D arrays)
+    indices: shape (num_timesteps, num_samples) - Indices of subsampled points in a flattened (32,32,32) grid
+    """
+    num_timesteps = Xout.shape[0]  # Number of time steps
+    num_samples = Xout.shape[1]  # Number of subsampled points per timestep
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Step 1: Convert x, y, z into a full (32, 32, 32) 3D grid
+    X_full, Y_full, Z_full = np.meshgrid(x, y, z, indexing="ij")  # Shape: (32, 32, 32)
+    
+    # Step 2: Flatten to (32768, 3) so that we can index it correctly
+    grid_points = np.column_stack([X_full.ravel(), Y_full.ravel(), Z_full.ravel()])  # Shape: (32768, 3)
+
+    # Store filenames for the PVD time series file
+    vtu_filenames = []
+
+    for timestep in range(num_timesteps - 1):
+        # Step 3: Extract subsampled spatial coordinates using indices
+        print(timestep, indices[timestep])
+        subsampled_points = grid_points[indices[timestep]]  # Shape: (num_samples, 3)
+
+        # Define connectivity: each point is a separate vertex cell
+        cells = np.hstack([np.ones((num_samples, 1), dtype=int), np.arange(num_samples).reshape(-1, 1)]).flatten()
+
+        # Create UnstructuredGrid with proper connectivity
+        point_cloud = pv.UnstructuredGrid(cells, np.full(num_samples, pv.CellType.VERTEX), subsampled_points)
+
+        # Store velocity (u, v, w) and density (rho) as point data
+        feature_names = ["u", "v", "w", "rho"]  # Rename features for clarity in ParaView
+        for i, name in enumerate(feature_names):
+            point_cloud.point_data[name] = Xout[timestep, :, i]
+
+        # Set default color variable in ParaView (optional)
+        point_cloud.active_scalars_name = "rho"  # Default to coloring by density
+
+        # Save each timestep as a VTU file
+        vtu_filename = os.path.join(output_dir, f"subsampled_{fileprefix}_t{timestep}.vtu")
+        point_cloud.save(vtu_filename)
+        vtu_filenames.append((timestep, vtu_filename))
+
+    # Generate a PVD file for time animation
+    pvd_filename = os.path.join(output_dir, f"subsampled_{fileprefix}.pvd")
+    with open(pvd_filename, "w") as pvd_file:
+        pvd_file.write('<VTKFile type="Collection" version="1.0">\n')
+        pvd_file.write('  <Collection>\n')
+        for timestep, vtu_file in vtu_filenames:
+            pvd_file.write(f'    <DataSet timestep="{timestep}" file="{os.path.basename(vtu_file)}"/>\n')
+        pvd_file.write('  </Collection>\n')
+        pvd_file.write('</VTKFile>\n')
+
+    print(f'Saved all timesteps in {pvd_filename}')
 
 
 def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128):
@@ -23,19 +83,22 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
 
     Xout = np.zeros((num_timesteps, args.num_samples, X.shape[2]))
 
-    if args.field_prediction_type == FieldPredictionType.GLOBAL: # global quantity prediction
+    if args.field_prediction_type == FieldPredictionType.GLOBAL:
         Yout = np.zeros((num_timesteps, 1, Y.shape[2]))
-    elif args.field_prediction_type == FieldPredictionType.LOCAL:  # local field prediction
-        if args.method == "full": 
+    elif args.field_prediction_type == FieldPredictionType.LOCAL:
+        if args.method == "full":
             raise Exception("For baseline full field input, prediction cannot be subsampled. Change `args.target`.")
         Yout = np.zeros((num_timesteps, args.num_samples, Y.shape[2]))
-    elif args.field_prediction_type == FieldPredictionType.FULL:  # full field prediction
+    elif args.field_prediction_type == FieldPredictionType.FULL:
         Yout = np.zeros((num_timesteps, Y.shape[1], Y.shape[2]))
     else:
         raise Exception("Enter a valid `args.target`.")
 
+    subsampled_indices_list = []  # Store subsampled indices for later use
+
     for timestep in range(0, num_timesteps - args.window, args.window):
         indices = subsample_fn(X, args.num_samples, timestep)
+        subsampled_indices_list.append(indices)
 
         if args.plot and args.method != "full":
             plot_samples(indices, x, y, z, timestep, args)
@@ -52,12 +115,13 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
                 subsampled_Y = Y[ts, indices, :]
             Yout[ts, :] = subsampled_Y
 
-            if args.plot: # plot 2D slice
+            if args.plot:
                 if args.method == "full":
                     yz_plane = extract_yz_plane(Xout, timestep, 3, 0, nx=args.nxsl, ny=args.nysl, nz=args.nzsl)
                     plot2d_contour(yz_plane, y, z, ts)
-    
-    return Xout, Yout
+
+    return Xout, Yout, np.array(subsampled_indices_list)
+
 
 if __name__ == "__main__":
 
@@ -95,7 +159,7 @@ if __name__ == "__main__":
         subsample_fn = lambda X, n, t: subsample_random(X, n, t)
 
     # Perform subsampling
-    Xout, Yout = subsample_data(X, Y, x, y, z, subsample_fn, args)
+    Xout, Yout, indices_list = subsample_data(X, Y, x, y, z, subsample_fn, args)
     print(f"Xout: {Xout.shape}; Yout: {Yout.shape}")
 
     # Reshape Xout and Yout to 1D or 3D based on args.method and args.field_prediction_type
@@ -109,5 +173,7 @@ if __name__ == "__main__":
     outfilename = f"subsampled_{fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
     np.savez(outfile, X=Xout, Y=Yout, x=x, y=y, z=z)
-
     print(f'Subsampled data saved to {outfile}')
+
+    # Save to VTK
+    save_vtu(Xout, x, y, z, indices_list, args.output_dir, fileprefix)
