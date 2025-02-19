@@ -1,10 +1,12 @@
 import numpy as np
 import os
 from mpi4py import MPI
-from algorithms import create_maxent_subsampler, subsample_random
+from algorithms import create_maxent_subsampler, subsample_random, build_pdf, subsample_uips
 from args import args
-from dataloaders import load_data, parallel_load_data
+from dataloaders import load_data #, parallel_load_data
 from helpers import check_and_create_dirs
+from plotting import plot_corner
+from viz import save_vtu
 
 
 def broadcast_large_array(data, comm, root=0):
@@ -124,17 +126,30 @@ for timestep in local_timesteps:
 # Gather results from all processes
 all_results = comm.gather(local_results, root=0)
 
-# Root process saves the results
+# Root process aggregates results
 if rank == 0:
-    # Flatten results
+    # Flatten results and sort by timestep
     all_results = [item for sublist in all_results for item in sublist]
+    all_results.sort(key=lambda x: x[0])  # Sort by timestep
+
+    # Extract only the indices in the correct order
+    indices_list = [indices for _, indices in all_results]
+
+    # Define the output filename
     if args.method == "full":
         fileprefix = f"nxsl{args.nx}-nysl{args.ny}-nzsl{args.nz}-ns{args.num_samples}-window{args.window}"
     else:
         fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+    
     outfilename = f"subsampled_{fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
-    np.savez(outfile, results=np.array(all_results, dtype=object))
+
+    # Save indices for debugging
+    np.savez(outfile, results=np.array(indices_list, dtype=object))
     print(f"Results saved to {outfile}")
+
+    # Save to VTK unstructured format
+    if args.viz:
+        save_vtu(X, Y, x, y, z, indices_list, args.output_dir, fileprefix)
 
 MPI.Finalize()

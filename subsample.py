@@ -1,6 +1,5 @@
 import numpy as np
 import os
-import sys
 
 from args import args 
 from algorithms import create_maxent_subsampler, subsample_random, subsample_uips, build_pdf
@@ -8,6 +7,7 @@ from constants import FieldPredictionType
 from dataloaders import load_data
 from helpers import check_and_create_dirs
 from plotting import plot_samples, plot2d_contour, plot_corner
+from viz import save_vtu
 
 
 def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128):
@@ -23,19 +23,22 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
 
     Xout = np.zeros((num_timesteps, args.num_samples, X.shape[2]))
 
-    if args.field_prediction_type == FieldPredictionType.GLOBAL: # global quantity prediction
+    if args.field_prediction_type == FieldPredictionType.GLOBAL:
         Yout = np.zeros((num_timesteps, 1, Y.shape[2]))
-    elif args.field_prediction_type == FieldPredictionType.LOCAL:  # local field prediction
-        if args.method == "full": 
+    elif args.field_prediction_type == FieldPredictionType.LOCAL:
+        if args.method == "full":
             raise Exception("For baseline full field input, prediction cannot be subsampled. Change `args.target`.")
         Yout = np.zeros((num_timesteps, args.num_samples, Y.shape[2]))
-    elif args.field_prediction_type == FieldPredictionType.FULL:  # full field prediction
+    elif args.field_prediction_type == FieldPredictionType.FULL:
         Yout = np.zeros((num_timesteps, Y.shape[1], Y.shape[2]))
     else:
         raise Exception("Enter a valid `args.target`.")
 
+    subsampled_indices_list = []  # Store subsampled indices for later use
+
     for timestep in range(0, num_timesteps - args.window, args.window):
         indices = subsample_fn(X, args.num_samples, timestep)
+        subsampled_indices_list.append(indices)
 
         if args.plot and args.method != "full":
             plot_samples(indices, x, y, z, timestep, args)
@@ -52,12 +55,13 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
                 subsampled_Y = Y[ts, indices, :]
             Yout[ts, :] = subsampled_Y
 
-            if args.plot: # plot 2D slice
+            if args.plot:
                 if args.method == "full":
                     yz_plane = extract_yz_plane(Xout, timestep, 3, 0, nx=args.nxsl, ny=args.nysl, nz=args.nzsl)
                     plot2d_contour(yz_plane, y, z, ts)
-    
-    return Xout, Yout
+
+    return Xout, Yout, np.array(subsampled_indices_list)
+
 
 if __name__ == "__main__":
 
@@ -95,19 +99,24 @@ if __name__ == "__main__":
         subsample_fn = lambda X, n, t: subsample_random(X, n, t)
 
     # Perform subsampling
-    Xout, Yout = subsample_data(X, Y, x, y, z, subsample_fn, args)
+    Xout, Yout, indices_list = subsample_data(X, Y, x, y, z, subsample_fn, args)
     print(f"Xout: {Xout.shape}; Yout: {Yout.shape}")
+
+    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
+
+    # Save to VTK unstructured format
+    if args.viz:
+        save_vtu(Xout, Yout, x, y, z, indices_list, args.output_dir, fileprefix)
 
     # Reshape Xout and Yout to 1D or 3D based on args.method and args.field_prediction_type
     if args.method == "full":
         Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[2])
+
     if args.field_prediction_type == FieldPredictionType.FULL:
         Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[2])
 
     # Save output
-    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
     outfilename = f"subsampled_{fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
     np.savez(outfile, X=Xout, Y=Yout, x=x, y=y, z=z)
-
     print(f'Subsampled data saved to {outfile}')
