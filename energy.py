@@ -55,8 +55,8 @@ def take_snapshot(label):
 
 def report_snapshots():
     """
-    Scans for all snapshots for the current node,
-    sorts them by timestamp, and computes differences.
+    Reports detailed breakdown for a single node.
+    (This function remains per-node.)
     """
     jobid = os.environ.get('SLURM_JOBID', 'local_job')
     nodeid = os.environ.get('SLURM_NODEID', '0')
@@ -85,56 +85,148 @@ def report_snapshots():
     for snap in snapshots:
         print(f"  Phase: {snap.get('phase', 'unknown')}, Time: {snap['timestamp_readable']}")
     
-    # Now compute differences between consecutive snapshots
-    print("\nReport for consecutive snapshot intervals:")
+    print("\nDetailed Breakdown by Interval:")
     energy_keys = ["CPU", "Mem", "Accel0", "Accel1", "Accel2", "Accel3"]
+    
+    overall_total_energy = 0.0
     
     for i in range(len(snapshots) - 1):
         s1 = snapshots[i]
         s2 = snapshots[i+1]
-        elapsed_time = s2["timestamp"] - s1["timestamp"]
-        total_energy = 0.0
+        interval_time = s2["timestamp"] - s1["timestamp"]
+        interval_total_energy = 0.0
+        
         print(f"\nInterval: '{s1.get('phase')}' ({s1['timestamp_readable']}) -> '{s2.get('phase')}' ({s2['timestamp_readable']})")
+        print(f"  Elapsed Time: {interval_time:.2f} seconds")
+        
         for key in energy_keys:
             try:
                 delta_value = s2.get(key, 0) - s1.get(key, 0)
-                total_energy += delta_value
-                print(f"  {key}: {delta_value} Joules")
+                interval_total_energy += delta_value
+                print(f"  {key}: {delta_value:.2f} Joules")
             except Exception as e:
                 print(f"  Error computing delta for {key}: {e}")
-        avg_power = total_energy / elapsed_time if elapsed_time > 0 else None
-        print(f"  Total Energy: {total_energy} Joules")
-        print(f"  Elapsed Time: {elapsed_time:.2f} seconds")
-        if avg_power is not None:
-            print(f"  Average Power: {avg_power:.2f} Watts")
+        
+        overall_total_energy += interval_total_energy
+        if interval_time > 0:
+            interval_avg_power = interval_total_energy / interval_time
+        else:
+            interval_avg_power = None
+        
+        print(f"  Total Energy for interval: {interval_total_energy:.2f} Joules")
+        if interval_avg_power is not None:
+            print(f"  Average Power for interval: {interval_avg_power:.2f} Watts")
+        else:
+            print("  Average Power for interval: not available")
+    
+    overall_elapsed = snapshots[-1]["timestamp"] - snapshots[0]["timestamp"]
+    print("\nOverall Summary (first snapshot to last snapshot):")
+    print(f"  Overall Energy Consumed: {overall_total_energy:.2f} Joules")
+    print(f"  Overall Elapsed Time: {overall_elapsed:.2f} seconds")
+    if overall_elapsed > 0:
+        overall_avg_power = overall_total_energy / overall_elapsed
+        print(f"  Overall Average Power: {overall_avg_power:.2f} Watts")
+    else:
+        print("  Overall Average Power: not available")
+
+def aggregate_reports():
+    """
+    Aggregates snapshot data from all nodes in the output directory.
+    It groups files by node id (the prefix of the file name),
+    computes each node's overall energy consumption (first to last snapshot),
+    and then computes an overall cluster summary.
+    """
+    jobid = os.environ.get('SLURM_JOBID', 'local_job')
+    output_dir = create_output_dir(jobid)
+    
+    # Get all snapshot files (e.g., "0_snapshot_*.json", "1_snapshot_*.json", etc.)
+    snapshot_files = sorted(output_dir.glob("*_snapshot_*.json"))
+    if not snapshot_files:
+        print("No snapshot files found for aggregation.")
+        return
+    
+    # Group snapshots by node id (assumes filename starts with node id)
+    node_snapshots = {}
+    for file in snapshot_files:
+        # file name format: "<nodeid>_snapshot_<label>.json"
+        node_id = file.name.split('_')[0]
+        if node_id not in node_snapshots:
+            node_snapshots[node_id] = []
+        try:
+            with open(file) as f:
+                snap = json.load(f)
+                node_snapshots[node_id].append(snap)
+        except Exception as e:
+            print(f"Error reading {file}: {e}")
+    
+    overall_cluster_energy = 0.0
+    cluster_start = None
+    cluster_end = None
+    energy_keys = ["CPU", "Mem", "Accel0", "Accel1", "Accel2", "Accel3"]
+    
+    print("Per-Node Energy Consumption:")
+    for node_id, snaps in node_snapshots.items():
+        if not snaps:
+            continue
+        snaps.sort(key=lambda s: s["timestamp"])
+        node_start = snaps[0]["timestamp"]
+        node_end = snaps[-1]["timestamp"]
+        if cluster_start is None or node_start < cluster_start:
+            cluster_start = node_start
+        if cluster_end is None or node_end > cluster_end:
+            cluster_end = node_end
+        
+        node_energy = 0.0
+        for key in energy_keys:
+            try:
+                delta_value = snaps[-1].get(key, 0) - snaps[0].get(key, 0)
+                node_energy += delta_value
+            except Exception as e:
+                print(f"Error computing delta for node {node_id}, key {key}: {e}")
+        overall_cluster_energy += node_energy
+        
+        elapsed_node = node_end - node_start
+        if elapsed_node > 0:
+            avg_power_node = node_energy / elapsed_node
+        else:
+            avg_power_node = None
+        
+        print(f"\nNode {node_id}:")
+        print(f"  Energy Consumed: {node_energy:.2f} Joules")
+        print(f"  Elapsed Time: {elapsed_node:.2f} seconds")
+        if avg_power_node is not None:
+            print(f"  Average Power: {avg_power_node:.2f} Watts")
         else:
             print("  Average Power: not available")
     
-    # Optionally, also compute overall difference (first to last)
-    overall_elapsed = snapshots[-1]["timestamp"] - snapshots[0]["timestamp"]
-    overall_energy = 0.0
-    for key in energy_keys:
-        overall_energy += snapshots[-1].get(key, 0) - snapshots[0].get(key, 0)
-    overall_avg_power = overall_energy / overall_elapsed if overall_elapsed > 0 else None
+    # Compute overall cluster elapsed time (from earliest start to latest end)
+    if cluster_start is not None and cluster_end is not None:
+        cluster_elapsed = cluster_end - cluster_start
+    else:
+        cluster_elapsed = 0.0
     
-    print("\nOverall Summary (first snapshot to last snapshot):")
-    print(f"  Overall Energy: {overall_energy} Joules")
-    print(f"  Overall Elapsed Time: {overall_elapsed:.2f} seconds")
-    if overall_avg_power is not None:
+    print("\nOverall Cluster Summary:")
+    print(f"  Total Energy Consumed: {overall_cluster_energy:.2f} Joules")
+    print(f"  Cluster Elapsed Time: {cluster_elapsed:.2f} seconds")
+    if cluster_elapsed > 0:
+        overall_avg_power = overall_cluster_energy / cluster_elapsed
         print(f"  Overall Average Power: {overall_avg_power:.2f} Watts")
     else:
         print("  Overall Average Power: not available")
 
 def main():
-    parser = argparse.ArgumentParser(description="Energy monitoring tool with lap functionality")
+    parser = argparse.ArgumentParser(description="Energy monitoring tool with lap and aggregation functionality")
     subparsers = parser.add_subparsers(dest="command", required=True)
     
     # Allow any label for snapshot
     parser_snapshot = subparsers.add_parser("snapshot", help="Take an energy snapshot with a custom label (e.g., start, lap, end)")
     parser_snapshot.add_argument("label", help="Label for the snapshot (e.g. start, lap, end)")
     
-    # Report command to analyze snapshots
-    parser_report = subparsers.add_parser("report", help="Report energy consumption between snapshots")
+    # Report command for per-node report
+    parser_report = subparsers.add_parser("report", help="Report energy consumption between snapshots for this node")
+    
+    # Aggregate command for cross-node aggregation
+    parser_aggregate = subparsers.add_parser("aggregate", help="Aggregate energy consumption reports across nodes")
     
     args = parser.parse_args()
     
@@ -142,6 +234,8 @@ def main():
         take_snapshot(args.label)
     elif args.command == "report":
         report_snapshots()
+    elif args.command == "aggregate":
+        aggregate_reports()
 
 if __name__ == "__main__":
     main()

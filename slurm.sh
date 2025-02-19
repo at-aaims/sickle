@@ -62,3 +62,6 @@ srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapsh
 
 # Generate energy usage report
 srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py report
+
+# Aggregate report
+python $SRC/energy.py aggregate
