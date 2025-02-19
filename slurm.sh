@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -A STF218
 #SBATCH -J sickle
-#SBATCH -p batch  # partition
+##SBATCH -p batch  # partition
 #SBATCH -q debug
 #SBATCH -N 1
 #SBATCH -S 0  # override -S 8 default setting to allow use of 64 procs/node
@@ -25,16 +25,16 @@ module purge
 source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
 
 # Take energy snapshot
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapshot start
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python -u $SRC/energy.py snapshot start
 
 module load PrgEnv-cray-amd
-time srun -N $SLURM_NNODES --ntasks-per-node=64 python $SRC/subsample-mpi.py \
+time srun -N $SLURM_NNODES --ntasks-per-node=64 python -u $SRC/subsample-mpi.py \
                            --output_dir "$RUNDIR/snapshots" $CASE
 
 ### START ENERGY BENCHMARKING
 
 # Take energy snapshot
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapshot lap
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python -u $SRC/energy.py snapshot lap
 
 ### TRAINING
 
@@ -59,10 +59,10 @@ module load rocm/5.7.1
 time srun -N $SLURM_NNODES --ntasks-per-node=8 python -u $SRC/train-ddp-multinode.py $CASE
 
 # Take energy snapshot
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py snapshot end
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python -u $SRC/energy.py snapshot end
 
 # Generate energy usage report
-srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python $SRC/energy.py report
+srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python -u $SRC/energy.py report
 
 # Aggregate report
 python $SRC/energy.py aggregate

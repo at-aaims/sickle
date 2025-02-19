@@ -48,7 +48,7 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()  # Rank of the current process
 size = comm.Get_size()  # Total number of processes
 
-print(f"Rank {rank} sees output_dir = {args.output_dir}")
+print(f"Rank {rank} sees output_dir = {args.output_dir}", flush=True)
 
 if rank == 0:
     print(f"*** TOTAL NUMBER OF PROCESSES: {size} *************")
@@ -62,6 +62,7 @@ if rank == 0:
 
     # Save data for broadcasting to all ranks
     fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}"
+    args_to_broadcast = args
 
 else:
     X = None
@@ -71,6 +72,7 @@ else:
     y = None
     z = None
     fileprefix = None
+    args_to_broadcast = None
 
 # Broadcast large arrays with chunking
 X = broadcast_large_array(X, comm) if rank == 0 else broadcast_large_array(None, comm)
@@ -81,12 +83,8 @@ z = broadcast_large_array(z, comm) if rank == 0 else broadcast_large_array(None,
 cv = broadcast_large_array(cv, comm) if rank == 0 else broadcast_large_array(None, comm)
 
 # Broadcast smaller arrays normally
-#cv = comm.bcast(cv, root=0)
-#x = comm.bcast(x, root=0)
-#y = comm.bcast(y, root=0)
-#z = comm.bcast(z, root=0)
+args = comm.bcast(args_to_broadcast, root=0)
 fileprefix = comm.bcast(fileprefix, root=0)
-args.num_samples = comm.bcast(args.num_samples, root=0)
 
 comm.Barrier()  # Synchronize all processes
 

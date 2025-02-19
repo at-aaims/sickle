@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import pyvista as pv
 
 
 def save_vtu(Xout, Yout, x, y, z, indices, output_dir, fileprefix):
@@ -12,6 +11,8 @@ def save_vtu(Xout, Yout, x, y, z, indices, output_dir, fileprefix):
     x, y, z: (32,)  # Grid coordinates (1D arrays)
     indices: (num_timesteps, num_samples)  # Indices of subsampled points in a flattened (32,32,32) grid
     """
+    import pyvista as pv
+
     num_timesteps = Xout.shape[0]  # Number of time steps
     num_samples = Xout.shape[1]  # Number of subsampled points per timestep
 
