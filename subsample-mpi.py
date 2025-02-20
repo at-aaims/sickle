@@ -135,9 +135,9 @@ if rank == 0:
 
     # Define the output filename
     if args.method == "full":
-        fileprefix = f"nxsl{args.nx}-nysl{args.ny}-nzsl{args.nz}-ns{args.num_samples}-window{args.window}"
+        fileprefix = f"nxsl{args.nx}-nysl{args.ny}-nzsl{args.nz}-ns{args.num_samples}-window{args.window}_method-{args.method}"
     else:
-        fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+        fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
     
     # Save output
     outfilename = f"subsampled_{fileprefix}.npz"
