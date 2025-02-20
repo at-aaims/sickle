@@ -32,7 +32,7 @@ def setup_ddp():
     torch.cuda.set_device(rank % torch.cuda.device_count())  # Assign GPU based on rank
 
     # Verify GPU setup
-    print(f"Rank {rank}: Using GPU {torch.cuda.current_device()} - {torch.cuda.get_device_name()}")
+    print(f"Rank {rank}: Using GPU {torch.cuda.current_device()} - {torch.cuda.get_device_name()}", flush=True)
 
     return rank, world_size
 
@@ -51,7 +51,7 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
     setup_ddp()
 
     device = torch.device(f'cuda:{rank % torch.cuda.device_count()}')
-    print(f"Rank {rank}: Device set to {device}")
+    print(f"Rank {rank}: Device set to {device}", flush=True)
 
     # Setup data loaders with DistributedSampler
     train_sampler = DistributedSampler(TensorDataset(X_train, Y_train), num_replicas=world_size, rank=rank)
@@ -59,7 +59,7 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
 
     train_loader = DataLoader(TensorDataset(X_train, Y_train), batch_size=args.batch, sampler=train_sampler)
     test_loader = DataLoader(TensorDataset(X_test, Y_test), batch_size=args.batch, sampler=test_sampler)
-    print(f"batch size: {args.batch}")
+    print(f"batch size: {args.batch}", flush=True)
 
     # Initialize the model and move it to the correct device
     input_shape = X_train.shape[1:]
@@ -67,7 +67,7 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
     model_module = importlib.import_module('archs.' + args.arch)
     model = model_module.build_model(input_shape, output_shape, window=args.window).to(device)
 
-    print(f"Rank {rank}: Model moved to {device}")
+    print(f"Rank {rank}: Model moved to {device}", flush=True)
 
     # Wrap the model with DistributedDataParallel
     model = nn.parallel.DistributedDataParallel(model, device_ids=[device.index])
@@ -92,7 +92,7 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
             optimizer.step()
             running_loss += loss.item()
 
-        print(f"Rank {rank}, Epoch {epoch + 1}/{args.epochs}, Loss: {running_loss:.4f}")
+        print(f"Rank {rank}, Epoch {epoch + 1}/{args.epochs}, Loss: {running_loss:.4f}", flush=True)
 
     # Save the model only on rank 0
     if rank == 0:
@@ -110,14 +110,14 @@ def main():
     # Preprocess data
     data = np.load(os.path.join(args.output_dir, outfilename))
     X, Y = data['X'], data['Y']
-    print(f"X: {X.shape}; Y: {Y.shape}") # X: [T, [X,Y,Z]-or-NSAMPLES, C]; Y: [T, [X,Y,Z]-or-NSAMPLES, C] 
+    print(f"X: {X.shape}; Y: {Y.shape}", flush=True) # X: [T, [X,Y,Z]-or-NSAMPLES, C]; Y: [T, [X,Y,Z]-or-NSAMPLES, C]
    
     # make timeseries to sequences
     if args.sequence:
         X, Y = create_sequences(X, Y, args)
     else:
         Y = np.squeeze(Y)
-    print(f"After sequence X: {X.shape}; Y: {Y.shape}")
+    print(f"After sequence X: {X.shape}; Y: {Y.shape}", flush=True)
 
     # transpose shape of X and Y to be [B,T,C,Samples] and [B,T,C,H,W,D]
     if args.method == "full":
@@ -132,7 +132,7 @@ def main():
         Y = Y.transpose(0,1,5,2,3,4)
     else:
         raise Exception("Enter a valid `args.target`.")
-    print(f"X: {X.shape}; Y: {Y.shape}")
+    print(f"X: {X.shape}; Y: {Y.shape}", flush=True)
     
     # train:val split
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_frac, shuffle=False)
@@ -151,8 +151,8 @@ def main():
     X_test = torch.tensor(X_test, dtype=torch.float32)
     Y_train = torch.tensor(Y_train, dtype=torch.float32)
     Y_test = torch.tensor(Y_test, dtype=torch.float32)
-    print(f"X_train: {X_train.shape}; X_test: {X_test.shape}")
-    print(f"Y_train: {Y_train.shape}; Y_test: {Y_test.shape}")
+    print(f"X_train: {X_train.shape}; X_test: {X_test.shape}", flush=True)
+    print(f"Y_train: {Y_train.shape}; Y_test: {Y_test.shape}", flush=True)
 
     # Determine world size and launch workers
     world_size = int(os.environ['SLURM_NTASKS'])
