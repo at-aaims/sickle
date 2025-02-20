@@ -9,12 +9,15 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, PowerTransformer
 import importlib
+from matplotlib import pyplot as plt
+
 from args import args
 from constants import *
 from dataloaders import create_sequences
 from helpers import scale
+from plotting import plot_ML_outputs, plot_learning_curve
 
-fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
 outfilename = f"subsampled_{fileprefix}.npz"
 
 def setup_ddp():
@@ -48,7 +51,7 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
     """
     Main worker function for each process. Initializes DDP and runs training.
     """
-    setup_ddp()
+    rank, comm_size = setup_ddp()
 
     device = torch.device(f'cuda:{rank % torch.cuda.device_count()}')
     print(f"Rank {rank}: Device set to {device}", flush=True)
@@ -92,7 +95,20 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
             optimizer.step()
             running_loss += loss.item()
 
-        print(f"Rank {rank}, Epoch {epoch + 1}/{args.epochs}, Loss: {running_loss:.4f}", flush=True)
+        if rank == 0:
+            print(f"Rank {rank}, Epoch {epoch + 1}/{args.epochs}, Loss: {running_loss:.4f}", flush=True)
+
+        model.eval()
+        with torch.no_grad():
+            X_test = X_test.to(device)
+            Y_test = Y_test.to(device)
+            Y_test_ML = model(X_test)
+            test_loss = criterion(Y_test_ML, Y_test)
+        if rank == 0:
+            print(f'Test loss): {test_loss.item():.04f}')
+
+    plot_ML_outputs(Y_test_ML[0, :].cpu().numpy().reshape(-1, 1), Y_test[0, :].cpu().numpy().reshape(-1, 1))
+    plt.savefig(os.path.join(args.plot_dir, f'{fileprefix}_{args.method}_ML_output.png'), dpi=200, bbox_inches='tight')
 
     # Save the model only on rank 0
     if rank == 0:
