@@ -133,7 +133,7 @@ if rank == 0:
         print(f"Output directory {args.output_dir} exists with permissions:", flush=True)
         print(oct(os.stat(args.output_dir).st_mode))
 
-    print("***** METHOD IS: ", method, flush=True)
+    print("***** METHOD IS: ", args.method, flush=True)
 
     # Define the output filename
     if args.method == "full":
