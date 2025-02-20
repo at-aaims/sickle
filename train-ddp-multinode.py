@@ -14,7 +14,7 @@ from constants import *
 from dataloaders import create_sequences
 from helpers import scale
 
-fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
+fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
 outfilename = f"subsampled_{fileprefix}.npz"
 
 def setup_ddp():
