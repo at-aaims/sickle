@@ -11,7 +11,7 @@
 
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
 mkdir -p $RUNDIR "$RUNDIR/snapshots" "$RUNDIR/plots"
-CASE=baseline-reconstruction.yaml
+CASE=sample-reconstruction.yaml
 CASEPATH=config/exp0/$CASE
 
 cp $CASEPATH $RUNDIR
@@ -30,7 +30,7 @@ srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python -u $SRC/energy.py sna
 module load PrgEnv-cray-amd
 time srun -N $SLURM_NNODES --ntasks-per-node=64 python -u $SRC/subsample-mpi.py \
                            --output_dir "$RUNDIR/snapshots" \
-                           --timesteps 15 15.2 15.4 15.6 15.8 16 16.2 16.4 16.6 16.8 17 17.2 17.4 17.6 17.8 18 18.2 18.4 18.6 \
+                           --timesteps 10 10.2 10.4 10.6 10.8 11 11.2 11.4 11.6 11.8 12 \
                            --viz \
                            $CASE
 
