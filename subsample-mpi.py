@@ -128,24 +128,24 @@ all_results = comm.gather(local_results, root=0)
 # Root process aggregates results
 if rank == 0:
     if not os.path.exists(args.output_dir):
-        print(f"Output directory {args.output_dir} does not exist!")
+        print(f"Output directory {args.output_dir} does not exist!", flush=True)
     else:
-        print(f"Output directory {args.output_dir} exists with permissions:")
+        print(f"Output directory {args.output_dir} exists with permissions:", flush=True)
         print(oct(os.stat(args.output_dir).st_mode))
 
-    print("***** METHOD IS: ", method)
+    print("***** METHOD IS: ", method, flush=True)
 
     # Define the output filename
-    #if args.method == "full":
-    #    fileprefix = f"nxsl{args.nx}-nysl{args.ny}-nzsl{args.nz}-ns{args.num_samples}-window{args.window}"
-    #else:
-    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+    if args.method == "full":
+        fileprefix = f"nxsl{args.nx}-nysl{args.ny}-nzsl{args.nz}-ns{args.num_samples}-window{args.window}"
+    else:
+        fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
     
     # Save output
     outfilename = f"subsampled_{fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
     np.savez(outfile, X=X, Y=Y, x=x, y=y, z=z)
-    print(f'Subsampled data saved to {outfile}')
+    print(f'Subsampled data saved to {outfile}', flush=True)
 
     # Flatten results and sort by timestep
     all_results = [item for sublist in all_results for item in sublist]

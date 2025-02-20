@@ -28,9 +28,9 @@ source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
 srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python -u $SRC/energy.py snapshot start
 
 module load PrgEnv-cray-amd
-time srun -N $SLURM_NNODES --ntasks-per-node=64 python -u $SRC/subsample-mpi.py \
+time srun -N $SLURM_NNODES -n4 python -u $SRC/subsample-mpi.py \
                            --output_dir "$RUNDIR/snapshots" \
-                           --timesteps 15 15.2 15.4 \
+                           --timesteps 15 15.2 15.4 15.6 15.8 \
                            --viz \
                            $CASE
 
