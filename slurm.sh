@@ -56,7 +56,8 @@ echo "World Size: $WORLD_SIZE, Node Rank: $NODE_RANK, Master Addr: $MASTER_ADDR,
 source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
 module load rocm/5.7.1
 
-time srun -N $SLURM_NNODES --ntasks-per-node=8 python -u $SRC/train-ddp-multinode.py $CASE
+time srun -N $SLURM_NNODES --ntasks-per-node=8 python -u $SRC/train-ddp-multinode.py \
+                                                --output_dir "$RUNDIR/snapshots" $CASE
 
 # Take energy snapshot
 srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python -u $SRC/energy.py snapshot end

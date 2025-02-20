@@ -130,12 +130,11 @@ all_results = comm.gather(local_results, root=0)
 
 # Root process aggregates results
 if rank == 0:
-    # Flatten results and sort by timestep
-    all_results = [item for sublist in all_results for item in sublist]
-    all_results.sort(key=lambda x: x[0])  # Sort by timestep
-
-    # Extract only the indices in the correct order
-    indices_list = [indices for _, indices in all_results]
+    if not os.path.exists(args.output_dir):
+        print(f"Output directory {args.output_dir} does not exist!")
+    else:
+        print(f"Output directory {args.output_dir} exists with permissions:")
+        print(oct(os.stat(args.output_dir).st_mode))
 
     # Define the output filename
     if args.method == "full":
@@ -143,12 +142,21 @@ if rank == 0:
     else:
         fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
     
+    # Save output
     outfilename = f"subsampled_{fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
+    np.savez(outfile, X=X, Y=Y, x=x, y=y, z=z)
+    print(f'Subsampled data saved to {outfile}')
 
-    # Save indices for debugging
-    np.savez(outfile, results=np.array(indices_list, dtype=object))
-    print(f"Results saved to {outfile}")
+    # Flatten results and sort by timestep
+    all_results = [item for sublist in all_results for item in sublist]
+    all_results.sort(key=lambda x: x[0])  # Sort by timestep
+
+    # Extract only the indices in the correct order
+    indices_list = [indices for _, indices in all_results]
+    # Save indices for debugging - following may be not be working
+    #np.savez(outfile, results=np.array(indices_list, dtype=object))
+    #print(f"Results saved to {outfile}")
 
     # Save to VTK unstructured format
     if args.viz:
