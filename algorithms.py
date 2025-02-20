@@ -109,12 +109,12 @@ def compute_entropy(clusters, timestep=0, num_bins=50):
     total_entropy = np.sum(adj_matrix)
     stdev_entropy = np.std(adj_matrix)
 
-    print(f"total entropy: {total_entropy}, stdev: {stdev_entropy}")
+    print(f"total entropy: {total_entropy}, stdev: {stdev_entropy}", flush=True)
 
     # Display adjacency matrix
     df = pd.DataFrame(adj_matrix)
     pd.set_option('display.float_format', lambda x: '{:.3f}'.format(x))
-    print(df)
+    print(df, flush=True)
 
     # Plot adjacency matrix if required
     if args.plot:
