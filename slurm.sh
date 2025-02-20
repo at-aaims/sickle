@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH -A STF218
 #SBATCH -J sickle
-##SBATCH -p batch  # partition
-#SBATCH -q debug
-#SBATCH -N 1
+#SBATCH -p batch  # partition
+##SBATCH -q debug
+#SBATCH -N 2
 #SBATCH -S 0  # override -S 8 default setting to allow use of 64 procs/node
 #SBATCH -t 01:00:00
 #SBATCH -o /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
@@ -29,7 +29,10 @@ srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python -u $SRC/energy.py sna
 
 module load PrgEnv-cray-amd
 time srun -N $SLURM_NNODES --ntasks-per-node=64 python -u $SRC/subsample-mpi.py \
-                           --output_dir "$RUNDIR/snapshots" $CASE
+                           --output_dir "$RUNDIR/snapshots" \
+                           --timesteps 15 15.2 15.4 15.6 15.8 16 16.2 16.4 16.6 16.8 17 17.2 17.4 17.6 17.8 18 18.2 18.4 18.6 \
+                           --viz \
+                           $CASE
 
 ### START ENERGY BENCHMARKING
 

@@ -133,11 +133,13 @@ if rank == 0:
         print(f"Output directory {args.output_dir} exists with permissions:")
         print(oct(os.stat(args.output_dir).st_mode))
 
+    print("***** METHOD IS: ", method)
+
     # Define the output filename
-    if args.method == "full":
-        fileprefix = f"nxsl{args.nx}-nysl{args.ny}-nzsl{args.nz}-ns{args.num_samples}-window{args.window}"
-    else:
-        fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
+    #if args.method == "full":
+    #    fileprefix = f"nxsl{args.nx}-nysl{args.ny}-nzsl{args.nz}-ns{args.num_samples}-window{args.window}"
+    #else:
+    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
     
     # Save output
     outfilename = f"subsampled_{fileprefix}.npz"
