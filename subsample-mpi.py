@@ -132,7 +132,7 @@ if rank == 0:
 
     print("***** METHOD IS: ", args.method, flush=True)
 
-    # Save output
+    # Save output to file
     outfilename = f"subsampled_{args.fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
     np.savez(outfile, X=X, Y=Y, x=x, y=y, z=z)
@@ -147,6 +147,18 @@ if rank == 0:
     # Save indices for debugging - following may be not be working
     #np.savez(outfile, results=np.array(indices_list, dtype=object))
     #print(f"Results saved to {outfile}")
+
+    # Define num_timesteps from the loaded data X
+    num_timesteps = X.shape[0]
+
+    # If sampling method is "full", reshape X to a 3D spatial grid per timestep.
+    if args.method == "full":
+        # Assuming X's last dimension is the channel (or feature) dimension.
+        X = X.reshape(num_timesteps, len(x), len(y), len(z), X.shape[-1])
+
+    # If field prediction type is FULL, reshape Y similarly.
+    if args.field_prediction_type == FieldPredictionType.FULL:
+        Y = Y.reshape(num_timesteps, len(x), len(y), len(z), Y.shape[-1])
 
     # Save to VTK unstructured format
     if args.viz:

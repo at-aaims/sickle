@@ -124,7 +124,7 @@ def main():
     data = np.load(os.path.join(args.output_dir, outfilename))
     X, Y = data['X'], data['Y']
     print(f"X: {X.shape}; Y: {Y.shape}", flush=True) # X: [T, [X,Y,Z]-or-NSAMPLES, C]; Y: [T, [X,Y,Z]-or-NSAMPLES, C]
-   
+
     # Convert timeseries to sequences
     if args.sequence:
         X, Y = create_sequences(X, Y, args)
@@ -137,6 +137,7 @@ def main():
         X = X.transpose(0,1,5,2,3,4)
     else:
         X = X.transpose(0,1,3,2)
+
     if args.field_prediction_type == FieldPredictionType.GLOBAL:
         Y = Y.transpose(0,1,3,2)
     elif args.field_prediction_type == FieldPredictionType.LOCAL:
@@ -146,7 +147,7 @@ def main():
     else:
         raise Exception("Enter a valid `args.target`.")
     print(f"X: {X.shape}; Y: {Y.shape}", flush=True)
-    
+
     # train:val split
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_frac, shuffle=False)
 
