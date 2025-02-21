@@ -142,6 +142,7 @@ def plot_ML_outputs(Y_test_ML, Y_test):
         axs[i].set_visible(False)
 
     plt.tight_layout()
+    #plt.savefig(os.path.join(args.plot_dir, f'{fileprefix}_{args.method}_ML_output.png'), dpi=200, bbox_inches='tight')
     plt.savefig(os.path.join(args.plot_dir, f'ML_output.png'), dpi=100)
     plt.close()
 

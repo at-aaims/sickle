@@ -9,7 +9,6 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, PowerTransformer
 import importlib
-from matplotlib import pyplot as plt
 
 from args import args
 from constants import *
@@ -108,7 +107,6 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
             print(f'Test loss): {test_loss.item():.04f}')
 
     plot_ML_outputs(Y_test_ML[0, :].cpu().numpy().reshape(-1, 1), Y_test[0, :].cpu().numpy().reshape(-1, 1))
-    plt.savefig(os.path.join(args.plot_dir, f'{fileprefix}_{args.method}_ML_output.png'), dpi=200, bbox_inches='tight')
 
     # Save the model only on rank 0
     if rank == 0:
