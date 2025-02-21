@@ -40,7 +40,7 @@ def save_vtu(Xout, Yout, x, y, z, indices, output_dir, fileprefix):
         # Store velocity (u, v, w) and density (rho) as point data for subsampled points
         feature_names = ["u", "v", "w", "rho"]
         for i, name in enumerate(feature_names):
-            subsampled_grid.point_data[name] = Xout[timestep, :, i]
+            subsampled_grid.point_data[name] = Xout[timestep, indices[timestep], i]
 
         # Add Yout (subsampled target) to the same subsampled grid
         yout_subsampled = Yout[timestep, indices[timestep], 0]  # Shape: (num_samples,)
