@@ -125,7 +125,7 @@ def main():
     X, Y = data['X'], data['Y']
     print(f"X: {X.shape}; Y: {Y.shape}", flush=True) # X: [T, [X,Y,Z]-or-NSAMPLES, C]; Y: [T, [X,Y,Z]-or-NSAMPLES, C]
    
-    # make timeseries to sequences
+    # Convert timeseries to sequences
     if args.sequence:
         X, Y = create_sequences(X, Y, args)
     else:

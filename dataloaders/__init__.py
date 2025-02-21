@@ -197,10 +197,10 @@ def create_sequences(X, Y, args):
     else:
         nt, nsamples, nvars_X = X.shape
 
-    if field_prediction_type == FieldPredictionType.FULL:
-        nx, ny, nz, nvars_Y = Y.shape[1:]
-    else:
-        nvars_Y = Y.shape[-1]
+    #if field_prediction_type == FieldPredictionType.FULL:
+    #    nx, ny, nz, nvars_Y = Y.shape[1:]
+    #else:
+    nvars_Y = Y.shape[-1]
 
     # Determine sequence info
     stride = window_size - overlap
