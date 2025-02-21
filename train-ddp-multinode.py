@@ -132,7 +132,7 @@ def main():
         Y = np.squeeze(Y)
     print(f"After sequence X: {X.shape}; Y: {Y.shape}", flush=True)
 
-    # transpose shape of X and Y to be [B,T,C,Samples] and [B,T,C,H,W,D]
+    # Transpose shape of X and Y to be [B,T,C,Samples] and [B,T,C,H,W,D]
     if args.method == "full":
         X = X.transpose(0,1,5,2,3,4)
     else:
