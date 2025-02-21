@@ -10,6 +10,7 @@ shared:
   nz: 256
   gravity: z
   plot: true
+  fileprefix: "{nx}x{ny}x{nz}-ns{num_samples}-window{window}"
 
 subsample:
   method: full

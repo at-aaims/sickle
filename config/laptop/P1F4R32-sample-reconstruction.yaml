@@ -14,8 +14,8 @@ shared:
 
 subsample:
   method: maxent # random or uips
-  path: /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/
-  num_samples: 100
+  path: "~/data/P1F4R32_nx512ny512nz256_6vars/"
+  num_samples: 5000
   num_clusters: 20
   nxsl: 32
   nysl: 32

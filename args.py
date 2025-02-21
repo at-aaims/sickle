@@ -24,6 +24,7 @@ choices = ['p', 'pv', 'wz', 'pwz', 'r', 'u', 'v', 'w']
 parser.add_argument('-cv', '--cluster_var', nargs="+", type=str, default='pv', choices=choices, help='cluster variable')
 parser.add_argument('--cutoff', type=float, default=0.5, help='optimal data cutoff factor, e.g., 0.1 keep top ten percent')
 parser.add_argument('--dims', type=int, default=2, choices=[2, 3], help='dataset dimensionality, 2 or 3 dimensions')
+parser.add_argument('--fileprefix', type=str, default="method={method}", help="File prefix for various files")
 parser.add_argument('-e', '--epochs', type=int, default=5, help='number of epochs')
 parser.add_argument('--hybrid', type=float, default=1, help='hybrid maxent+random sampling approach')
 parser.add_argument('--nbytes', type=int, default=4, help='how many bytes used for each number')
@@ -116,5 +117,16 @@ if args.arch == 'lstm' and (args.overlap > args.window - 1 or args.overlap < 0):
 # Convert cluster_var & output_vars to a list if it's a string in the YAML config
 if isinstance(args.output_vars, str): args.output_vars = [args.output_vars]
 if isinstance(args.cluster_var, str): args.cluster_var = [args.cluster_var]
+
+# After args have been fully processed, format fileprefix using all argparse values
+if hasattr(args, "fileprefix") and isinstance(args.fileprefix, str):
+    try:
+        args.fileprefix = args.fileprefix.format(**vars(args))
+    except KeyError as e:
+        print(f"Warning: Missing placeholder {e} in fileprefix, skipping formatting.")
+
+# Expand only the "path" key
+if hasattr(args, "path") and isinstance(args.path, str) and args.path.startswith("~"):
+    setattr(args, "path", os.path.expanduser(args.path))
 
 print(args)

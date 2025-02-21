@@ -61,7 +61,6 @@ if rank == 0:
     X, Y, cv, x, y, z = load_data(args)
 
     # Save data for broadcasting to all ranks
-    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}"
     args_to_broadcast = args
 
 else:
@@ -71,7 +70,6 @@ else:
     x = None
     y = None
     z = None
-    fileprefix = None
     args_to_broadcast = None
 
 # Broadcast large arrays with chunking
@@ -84,7 +82,6 @@ cv = broadcast_large_array(cv, comm) if rank == 0 else broadcast_large_array(Non
 
 # Broadcast smaller arrays normally
 args = comm.bcast(args_to_broadcast, root=0)
-fileprefix = comm.bcast(fileprefix, root=0)
 
 comm.Barrier()  # Synchronize all processes
 
@@ -135,14 +132,8 @@ if rank == 0:
 
     print("***** METHOD IS: ", args.method, flush=True)
 
-    # Define the output filename
-    if args.method == "full":
-        fileprefix = f"nxsl{args.nx}-nysl{args.ny}-nzsl{args.nz}-ns{args.num_samples}-window{args.window}"
-    else:
-        fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}"
-    
     # Save output
-    outfilename = f"subsampled_{fileprefix}.npz"
+    outfilename = f"subsampled_{args.fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
     np.savez(outfile, X=X, Y=Y, x=x, y=y, z=z)
     print(f'Subsampled data saved to {outfile}', flush=True)
@@ -159,6 +150,6 @@ if rank == 0:
 
     # Save to VTK unstructured format
     if args.viz:
-        save_vtu(X, Y, x, y, z, indices_list, args.output_dir, fileprefix)
+        save_vtu(X, Y, x, y, z, indices_list, args.output_dir, args.fileprefix)
 
 MPI.Finalize()

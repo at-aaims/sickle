@@ -102,11 +102,9 @@ if __name__ == "__main__":
     Xout, Yout, indices_list = subsample_data(X, Y, x, y, z, subsample_fn, args)
     print(f"Xout: {Xout.shape}; Yout: {Yout.shape}")
 
-    fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
-
     # Save to VTK unstructured format
     if args.viz:
-        save_vtu(Xout, Yout, x, y, z, indices_list, args.output_dir, fileprefix)
+        save_vtu(Xout, Yout, x, y, z, indices_list, args.output_dir, args.fileprefix)
 
     # Reshape Xout and Yout to 1D or 3D based on args.method and args.field_prediction_type
     if args.method == "full":
@@ -116,7 +114,7 @@ if __name__ == "__main__":
         Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[2])
 
     # Save output
-    outfilename = f"subsampled_{fileprefix}.npz"
+    outfilename = f"subsampled_{args.fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
     np.savez(outfile, X=Xout, Y=Yout, x=x, y=y, z=z)
     print(f'Subsampled data saved to {outfile}')

@@ -16,8 +16,7 @@ from dataloaders import create_sequences
 from helpers import scale
 from plotting import plot_ML_outputs, plot_learning_curve
 
-fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
-outfilename = f"subsampled_{fileprefix}.npz"
+outfilename = f"subsampled_{args.fileprefix}.npz"
 
 def setup_ddp():
     """
@@ -112,7 +111,7 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
     if rank == 0:
         model_path = f"models/{args.arch}"
         os.makedirs(model_path, exist_ok=True)
-        torch.save(model.state_dict(), f"{model_path}/{fileprefix}_model.pth")
+        torch.save(model.state_dict(), f"{model_path}/{args.fileprefix}_model.pth")
 
     cleanup_ddp()
 

@@ -6,6 +6,7 @@ shared:
   output_vars: drag
   cluster_var: wz
   plot: true
+  fileprefix: "2dcyl-method={method}"
 
 subsample:
   method: maxent # random or uips

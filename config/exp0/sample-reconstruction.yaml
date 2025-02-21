@@ -10,6 +10,7 @@ shared:
   nz: 256
   gravity: z
   plot: true
+  fileprefix: "{nxsl}x{nysl}x{nzsl}-ns{num_samples}-window{window}"
 
 subsample:
   method: maxent # random or uips

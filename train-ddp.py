@@ -16,8 +16,7 @@ from constants import *
 from dataloaders import create_sequences
 from helpers import scale
 
-fileprefix = f"nxsl{args.nxsl}-nysl{args.nysl}-nzsl{args.nzsl}-ns{args.num_samples}-window{args.window}_method-{args.method}"
-outfilename = f"subsampled_{fileprefix}.npz"  
+outfilename = f"subsampled_{args.fileprefix}.npz"  
 
 # Functions to set up the distributed environment
 def setup(rank, world_size):
@@ -79,7 +78,7 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
     if rank == 0:
         model_path = f"models/{args.arch}"
         if not os.path.exists(model_path): os.makedirs(model_path)
-        torch.save(model.state_dict(), f"{model_path}/{fileprefix}_model.pth")
+        torch.save(model.state_dict(), f"{model_path}/{args.fileprefix}_model.pth")
 
     cleanup()
 
