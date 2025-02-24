@@ -37,11 +37,11 @@ def subsample_data(X, Y, x, y, z, subsampler, args):
     subsampled_indices_list = []  # Store subsampled indices for later use
 
     for timestep in range(0, num_timesteps - args.window, args.window):
-        indices = subsampler.sample(X, args.num_samples, timestep)
+        indices = subsampler.sample(args.num_samples, timestep)
         subsampled_indices_list.append(indices)
 
-        if args.plot and args.method != "full":
-            plot_samples(indices, x, y, z, timestep, args)
+        #if args.plot and args.method != "full":
+        #    plot_samples(indices, x, y, z, timestep, args)
 
         for sub_timestep in range(args.window):
             ts = timestep + sub_timestep
@@ -74,7 +74,6 @@ if __name__ == "__main__":
     num_timesteps = X.shape[0] // args.window * args.window + 1
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
 
-
     # Define subsample function based on method
     subsampler = get_subsampler(X, args)
 
@@ -82,23 +81,26 @@ if __name__ == "__main__":
     local_results = []
     local_timesteps = range(X.shape[0])
     for timestep in local_timesteps:
+        print("timestep", timestep)
         if args.method == "full":
             indices = np.arange(X.shape[1])
         else:
             indices = subsampler.sample(args.num_samples, timestep)
+        print("***", args.method, indices)
         local_results.append((timestep, indices))
+        Yout[timestep] = Y[timestep, indices]
 
     # Perform subsampling
-    Xout, Yout, indices_list = subsample_data(X, Y, x, y, z, subsampler, args)
-    print(f"Xout: {Xout.shape}; Yout: {Yout.shape}")
+    #Xout, Yout, indices_list = subsample_data(X, Y, x, y, z, subsampler, args)
+    #print(f"Xout: {Xout.shape}; Yout: {Yout.shape}")
 
     # Save to VTK unstructured format
-    if args.viz:
-        save_vtu(Xout, Yout, x, y, z, indices_list, args.output_dir, args.fileprefix)
+    #if args.viz:
+    #    save_vtu(Xout, Yout, x, y, z, indices_list, args.output_dir, args.fileprefix)
 
     # Reshape Xout and Yout to 1D or 3D based on args.method and args.field_prediction_type
-    if args.method == "full":
-        Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[2])
+    #if args.method == "full":
+    #    Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[2])
 
     if args.field_prediction_type == FieldPredictionType.FULL:
         Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[2])
