@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
     # Define subsample function based on method
     if args.method == "maxent":
-        subsampler = get_subsampler(X, args, cv)
+        subsampler = get_subsampler(X, args, cv=cv)
     else:
         subsampler = get_subsampler(X, args)
 
