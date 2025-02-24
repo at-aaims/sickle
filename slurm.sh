@@ -23,11 +23,11 @@ SRC=/lustre/orion/proj-shared/gen150/dsml/sickle
 ### SUBSAMPLING 
 module purge
 source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
+module load PrgEnv-cray-amd
 
 # Take energy snapshot
 srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python -u $SRC/energy.py snapshot start
 
-module load PrgEnv-cray-amd
 time srun -N $SLURM_NNODES -n4 python -u $SRC/subsample-mpi.py \
                            --output_dir $RUNDIR/snapshots \
                            --timesteps 15 15.2 15.4 15.6 15.8 \
@@ -57,7 +57,7 @@ mkdir -p ${MIOPEN_USER_DB_PATH}
 echo "World Size: $WORLD_SIZE, Node Rank: $NODE_RANK, Master Addr: $MASTER_ADDR, Master Port: $MASTER_PORT"
 
 source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
-module load rocm/5.7.1
+module load rocm/6.3.1 libfabric/1.22.0
 
 time srun -N $SLURM_NNODES --ntasks-per-node=8 python -u $SRC/train-ddp-multinode.py \
                                                 --output_dir $RUNDIR/snapshots $CASE >& $RUNDIR/train.out
