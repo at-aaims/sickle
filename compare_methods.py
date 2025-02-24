@@ -20,10 +20,10 @@ if __name__ == "__main__":
     histograms = {}  # Store histogram data for plotting
     for method in ["full", "random", "uips", "maxent"]:
         # Get the appropriate subsample function
-        subsample_fn = get_subsample_fn(method, cv, args)
+        subsampler = get_subsampler(X, args)
         
         # Apply the subsampling function to get indices
-        indices = subsampler.sample(X, args.num_samples, ts)
+        indices = subsampler.sample(args.num_samples, ts)
         
         # Extract the subsampled cluster variable
         subsampled_cv = cv[ts, indices]
