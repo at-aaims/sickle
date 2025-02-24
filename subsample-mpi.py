@@ -3,6 +3,7 @@ import os
 from mpi4py import MPI
 from algorithms import create_maxent_subsampler, subsample_random, build_pdf, subsample_uips
 from args import args
+from constants import FieldPredictionType
 from dataloaders import load_data #, parallel_load_data
 from helpers import check_and_create_dirs
 from plotting import plot_corner
