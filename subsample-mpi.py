@@ -1,12 +1,12 @@
 import numpy as np
 import os
+
 from mpi4py import MPI
-from algorithms import create_maxent_subsampler, subsample_random, build_pdf, subsample_uips
 from args import args
 from constants import FieldPredictionType
 from dataloaders import load_data #, parallel_load_data
 from helpers import check_and_create_dirs
-from plotting import plot_corner
+from subsampling import get_subsampler
 from viz import save_vtu
 
 
@@ -90,34 +90,15 @@ comm.Barrier()  # Synchronize all processes
 local_timesteps = np.array_split(range(X.shape[0]), size)[rank]
 
 # Define subsample function based on method
-def get_subsample_fn():
-    if args.method == "maxent":
-        subsample_fn = create_maxent_subsampler(cv, args)
-    elif args.method == "random":
-        subsample_fn = subsample_random
-    elif args.method == "uips":
-        # Phase-space sampling
-        if args.plot:
-            X_flat = X.reshape(-1, X.shape[-1])
-            plot_corner(X_flat)
-
-        def subsample_fn(X, n, t):
-            X_local = X[t]
-            hist, bin_edges = build_pdf(X_local, nbins=args.bins)
-            return subsample_uips(X_local[None, ...], n, hist, bin_edges)
-    elif args.method == "full":
-        subsample_fn = lambda X, n, t: np.arange(X.shape[1])
-    else:
-        raise ValueError(f"Unsupported sampling method: {args.method}")
-    return subsample_fn
-
-subsample_fn = get_subsample_fn()
+subsampler = get_subsampler(X, args)
 
 # Process local timesteps
 local_results = []
 for timestep in local_timesteps:
-    print(f"[DEBUG] args.num_samples before calling subsample_fn: {args.num_samples}")
-    indices = subsample_fn(X, args.num_samples, timestep)
+    if args.method == "full":
+        indices = np.arange(X.shape[1])
+    else:
+        indices = subsampler.sample(args.num_samples, timestep)
     local_results.append((timestep, indices))
 
 # Gather results from all processes
@@ -139,9 +120,15 @@ if rank == 0:
 
     # Extract only the indices in the correct order
     indices_list = [indices for _, indices in all_results]
+
     # Save indices for debugging - following may be not be working
     #np.savez(outfile, results=np.array(indices_list, dtype=object))
     #print(f"Results saved to {outfile}")
+
+    # Save to VTK unstructured format
+    #if args.viz:
+    #    print(X.shape, Y.shape)
+    #    save_vtu(X, Y, x, y, z, indices_list, args.output_dir, args.fileprefix)
 
     # Define num_timesteps from the loaded data X
     num_timesteps = X.shape[0]
@@ -163,9 +150,4 @@ if rank == 0:
 
     print(f"Output: X: {X.shape}; Y: {Y.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}", flush=True)
     
-    # Save to VTK unstructured format
-    if args.viz:
-        save_vtu(X, Y, x, y, z, indices_list, args.output_dir, args.fileprefix)
-
 MPI.Finalize()
-
