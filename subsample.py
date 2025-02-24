@@ -2,11 +2,11 @@ import numpy as np
 import os
 
 from args import args 
-from algorithms import create_maxent_subsampler, subsample_random, subsample_uips, build_pdf
 from constants import FieldPredictionType
 from dataloaders import load_data
 from helpers import check_and_create_dirs
-from plotting import plot_samples, plot2d_contour, plot_corner
+from plotting import plot_samples, plot2d_contour
+from subsampling import get_subsampler
 from viz import save_vtu
 
 
@@ -17,7 +17,7 @@ def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128)
     return data_3d[x_index, :, :]
 
 
-def subsample_data(X, Y, x, y, z, subsample_fn, args):
+def subsample_data(X, Y, x, y, z, subsampler, args):
     num_timesteps = X.shape[0] // args.window * args.window + 1
     print(f"num_timesteps: {num_timesteps}")
 
@@ -37,11 +37,11 @@ def subsample_data(X, Y, x, y, z, subsample_fn, args):
     subsampled_indices_list = []  # Store subsampled indices for later use
 
     for timestep in range(0, num_timesteps - args.window, args.window):
-        indices = subsample_fn(X, args.num_samples, timestep)
+        indices = subsampler.sample(args.num_samples, timestep)
         subsampled_indices_list.append(indices)
 
-        if args.plot and args.method != "full":
-            plot_samples(indices, x, y, z, timestep, args)
+        #if args.plot and args.method != "full":
+        #    plot_samples(indices, x, y, z, timestep, args)
 
         for sub_timestep in range(args.window):
             ts = timestep + sub_timestep
@@ -74,37 +74,19 @@ if __name__ == "__main__":
     num_timesteps = X.shape[0] // args.window * args.window + 1
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
 
-    if args.method == "full": 
-        args.num_samples = X.shape[1]
-
+    # Define subsample function based on method
     if args.method == "maxent":
-        # Define the subsampling function for maximum entropy
-        subsample_fn = create_maxent_subsampler(cv, args)
-    elif args.method == "full":
-        # No subsampling, use all indices
-        subsample_fn = lambda X, n, t: np.arange(X.shape[1])
-    elif args.method == "uips":
-        # Phase-space sampling
-        if args.plot: 
-            X_flat = X.reshape(-1, X.shape[-1])
-            plot_corner(X_flat)
-
-        def subsample_fn(X, n, t):
-            X_local = X[t]
-            hist, bin_edges = build_pdf(X_local, nbins=args.bins)
-            return subsample_uips(X_local[None, ...], n, hist, bin_edges)
-
-    else: 
-        # Random subsampling
-        subsample_fn = lambda X, n, t: subsample_random(X, n, t)
+        subsampler = get_subsampler(X, args, cv=cv)
+    else:
+        subsampler = get_subsampler(X, args)
 
     # Perform subsampling
-    Xout, Yout, indices_list = subsample_data(X, Y, x, y, z, subsample_fn, args)
+    Xout, Yout, indices_list = subsample_data(X, Y, x, y, z, subsampler, args)
     print(f"Xout: {Xout.shape}; Yout: {Yout.shape}")
 
     # Save to VTK unstructured format
-    if args.viz:
-        save_vtu(Xout, Yout, x, y, z, indices_list, args.output_dir, args.fileprefix)
+    #if args.viz:
+    #    save_vtu(Xout, Yout, x, y, z, indices_list, args.output_dir, args.fileprefix)
 
     # Reshape Xout and Yout to 1D or 3D based on args.method and args.field_prediction_type
     if args.method == "full":

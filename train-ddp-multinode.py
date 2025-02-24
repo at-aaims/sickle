@@ -103,7 +103,6 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
         epoch_train_loss = running_loss / num_batches
         if rank == 0:
             train_loss_history.append(epoch_train_loss)
-            print(f"Rank {rank}, Epoch {epoch + 1}/{args.epochs}, Loss: {epoch_train_loss:.4f}", flush=True)
 
         # Compute validation loss over the test_loader
         model.eval()
@@ -120,7 +119,8 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
         epoch_val_loss = val_loss / val_batches
         if rank == 0:
             val_loss_history.append(epoch_val_loss)
-            print(f"Validation Loss: {epoch_val_loss:.4f}", flush=True)
+            print(f"Epoch {epoch+1}/{args.epochs} - Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f}", flush=True)
+
 
     # Plot training diagnostics
     if rank == 0 and args.plot:
