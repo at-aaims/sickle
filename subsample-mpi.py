@@ -132,12 +132,6 @@ if rank == 0:
 
     print("***** METHOD IS: ", args.method, flush=True)
 
-    # Save output to file
-    outfilename = f"subsampled_{args.fileprefix}.npz"
-    outfile = os.path.join(args.output_dir, outfilename)
-    np.savez(outfile, X=X, Y=Y, x=x, y=y, z=z)
-    print(f'Subsampled data saved to {outfile}', flush=True)
-
     # Flatten results and sort by timestep
     all_results = [item for sublist in all_results for item in sublist]
     all_results.sort(key=lambda x: x[0])  # Sort by timestep
@@ -160,8 +154,17 @@ if rank == 0:
     if args.field_prediction_type == FieldPredictionType.FULL:
         Y = Y.reshape(num_timesteps, len(x), len(y), len(z), Y.shape[-1])
 
+    # Save output to file
+    outfilename = f"subsampled_{args.fileprefix}.npz"
+    outfile = os.path.join(args.output_dir, outfilename)
+    np.savez(outfile, X=X, Y=Y, x=x, y=y, z=z)
+    print(f'Subsampled data saved to {outfile}', flush=True)
+
+    print(f"Output: X: {X.shape}; Y: {Y.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}", flush=True)
+    
     # Save to VTK unstructured format
     if args.viz:
         save_vtu(X, Y, x, y, z, indices_list, args.output_dir, args.fileprefix)
 
 MPI.Finalize()
+
