@@ -111,6 +111,10 @@ if rank == 0:
     all_results.sort(key=lambda x: x[0])
     indices_list = [indices for _, indices in all_results]
     
+    # Save to VTK unstructured format if visualization is enabled.
+    if args.viz:
+        save_vtu(X, Y, x, y, z, indices_list, args.output_dir, args.fileprefix)
+    
     # Now, compute the subsampled outputs.
     num_timesteps = X.shape[0]
     # Preallocate output arrays based on X and Y shapes:
@@ -139,7 +143,7 @@ if rank == 0:
                 subsampled_Y = Y[ts, indices, :]
             Yout[ts, :] = subsampled_Y
     
-    # Optionally, if you need to reshape outputs to a spatial grid:
+    # Reshape outputs to a spatial grid:
     if args.method == "full":
         Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[-1])
     if args.field_prediction_type == FieldPredictionType.FULL:
