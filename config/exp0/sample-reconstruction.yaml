@@ -15,11 +15,11 @@ shared:
 subsample:
   method: maxent # random or uips
   path: /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/P1F4R32_testing/raw_data/
-  num_samples: 3000
+  num_samples: 100
   num_clusters: 20
-  nxsl: 512
-  nysl: 512
-  nzsl: 256
+  nxsl: 32
+  nysl: 32
+  nzsl: 32
 
 train:
   epochs: 100
