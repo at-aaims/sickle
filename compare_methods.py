@@ -3,31 +3,15 @@ import matplotlib.pyplot as plt
 import os
 
 from args import args
-from algorithms import create_maxent_subsampler, subsample_random, subsample_uips, build_pdf
+from subsampling import get_subsampler
 from dataloaders import load_data
 from scipy.stats import gaussian_kde
 
 
-def get_subsample_fn(method, cv, args):
-    if method == "maxent":
-        return create_maxent_subsampler(cv, args)
-    elif method == "random":
-        return subsample_random
-    elif method == "uips":
-        def subsample_fn(X, n, t):
-            X_local = X[t]
-            hist, bin_edges = build_pdf(X_local, nbins=args.bins)
-            return subsample_uips(X_local[None, ...], n, hist, bin_edges)
-        return subsample_fn
-    elif method == "full":
-        return lambda X, n, t: np.arange(X.shape[1])
-    else:
-        raise ValueError(f"Unsupported sampling method: {method}")
-
 if __name__ == "__main__":
 
     # Load the data
-    X, Y, cv, x, y, z = load_data(args.path, args)
+    X, Y, cv, x, y, z = load_data(args)
     num_timesteps = X.shape[0] // args.window * args.window + 1
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
 
@@ -39,7 +23,7 @@ if __name__ == "__main__":
         subsample_fn = get_subsample_fn(method, cv, args)
         
         # Apply the subsampling function to get indices
-        indices = subsample_fn(X, args.num_samples, ts)
+        indices = subsampler.sample(X, args.num_samples, ts)
         
         # Extract the subsampled cluster variable
         subsampled_cv = cv[ts, indices]
