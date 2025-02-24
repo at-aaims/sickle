@@ -77,11 +77,16 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     criterion = nn.MSELoss()
 
+    # Initialize lists to keep track of losses (recorded only on rank 0)
+    train_loss_history = []
+    val_loss_history = []
+
     # Training loop
     for epoch in range(args.epochs):
         model.train()
         train_sampler.set_epoch(epoch)  # Shuffle data for this epoch
         running_loss = 0.0
+        num_batches = 0
 
         for i, (batch_X, batch_Y) in enumerate(train_loader):
             batch_X, batch_Y = batch_X.to(device), batch_Y.to(device)
@@ -92,20 +97,35 @@ def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
+            num_batches += 1
 
+        # Compute average training loss for this epoch
+        epoch_train_loss = running_loss / num_batches
         if rank == 0:
-            print(f"Rank {rank}, Epoch {epoch + 1}/{args.epochs}, Loss: {running_loss:.4f}", flush=True)
+            train_loss_history.append(epoch_train_loss)
+            print(f"Rank {rank}, Epoch {epoch + 1}/{args.epochs}, Loss: {epoch_train_loss:.4f}", flush=True)
 
+        # Compute validation loss over the test_loader
         model.eval()
+        val_loss = 0.0
+        val_batches = 0
         with torch.no_grad():
             X_test = X_test.to(device)
             Y_test = Y_test.to(device)
             Y_test_ML = model(X_test)
-            test_loss = criterion(Y_test_ML, Y_test)
-        if rank == 0:
-            print(f'Test loss): {test_loss.item():.04f}')
+            loss = criterion(Y_test_ML, Y_test)
+            val_loss += loss.item()
+            val_batches += 1
 
-    plot_ML_outputs(Y_test_ML[0, :].cpu().numpy().reshape(-1, 1), Y_test[0, :].cpu().numpy().reshape(-1, 1))
+        epoch_val_loss = val_loss / val_batches
+        if rank == 0:
+            val_loss_history.append(epoch_val_loss)
+            print(f"Validation Loss: {epoch_val_loss:.4f}", flush=True)
+
+    # Plot training diagnostics
+    if rank == 0 and args.plot:
+        plot_learning_curve(train_loss_history, val_loss_history)
+        plot_ML_outputs(Y_test_ML[0, :].cpu().numpy().reshape(-1, 1), Y_test[0, :].cpu().numpy().reshape(-1, 1))
 
     # Save the model only on rank 0
     if rank == 0:
