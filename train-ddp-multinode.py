@@ -5,6 +5,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.data.distributed import DistributedSampler
 import torch.distributed as dist
+import torch.amp
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, PowerTransformer
@@ -17,6 +18,144 @@ from helpers import scale
 from plotting import plot_ML_outputs, plot_learning_curve
 
 outfilename = f"subsampled_{args.fileprefix}.npz"
+
+prec_dict = {"int8": torch.int8,
+             "fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float,
+             "fp64": torch.float64}
+
+class NoContext:
+    def __enter__(self):
+        return None
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        pass
+
+class NoScaler:
+    """ Dummy class that provides the trivial protocol of PyTorch gradient scaler."""
+    def scale(self, loss):
+        return loss
+    def step(self, optimizer):
+        optimizer.step()
+    def update(self):
+        pass
+
+class Trainer:
+    def __init__(self, args, X_train, Y_train, X_test, Y_test):
+        """
+        Initialize the distributed environment for DDP using environment variables
+        provided by Slurm, set up model and dataset.
+        """
+        self.rank = int(os.environ['SLURM_PROCID'])  # Global rank of the current process
+        self.world_size = int(os.environ['SLURM_NTASKS'])  # Total number of tasks
+        #self.master_addr = os.environ['MASTER_ADDR']  # Address of the master node
+        #self.master_port = os.environ['MASTER_PORT']  # Port of the master node
+
+        self.to_plot = args.plot
+
+        # Initialize the process group
+        torch.distributed.init_process_group("nccl", rank=self.rank, world_size=self.world_size)
+        torch.cuda.set_device(self.rank % torch.cuda.device_count())  # Assign GPU based on rank
+
+        # Verify GPU setup
+        print(f"Trainer: Rank {self.rank}: Using GPU {torch.cuda.current_device()} - {torch.cuda.get_device_name()}")
+        
+        self.device = torch.device(f'cuda:{self.rank % torch.cuda.device_count()}')
+        print(f"Trainer: Rank {self.rank}: Device set to {self.device}")
+        
+        # Setup data loaders with DistributedSampler
+        self.train_sampler = DistributedSampler(TensorDataset(X_train, Y_train), num_replicas=self.world_size, rank=self.rank)
+        test_sampler = DistributedSampler(TensorDataset(X_test, Y_test), num_replicas=self.world_size, rank=self.rank)
+
+        self.train_loader = DataLoader(TensorDataset(X_train, Y_train), batch_size=args.batch, sampler=self.train_sampler)
+        self.test_loader = DataLoader(TensorDataset(X_test, Y_test), batch_size=args.batch, sampler=test_sampler)
+        print(f"Trainer: batch size: {args.batch}")
+    
+        input_shape = X_train.shape[1:]
+        output_shape = Y_train.shape[1:] if len(Y_train.shape) > 1 else 1
+        model_module = importlib.import_module('archs.' + args.arch)
+        model = model_module.build_model(input_shape, output_shape, window=args.window).to(self.device)
+
+        print(f"Trainer: Rank {self.rank}: Model moved to {self.device}")
+        # Wrap the model with DistributedDataParallel
+        self.model = nn.parallel.DistributedDataParallel(model, device_ids=[self.device.index])
+
+        # Initialize lists to keep track of losses (recorded only on rank 0)
+        self.train_loss_history = []
+        self.val_loss_history = []
+        self.last_eval_Y = None
+        self.last_ref_Y = None
+
+    def __del__(self):
+        # Plot training diagnostics
+        if self.rank == 0 and self.to_plot and self.last_eval_Y is not None:
+            plot_learning_curve(self.train_loss_history, self.val_loss_history)
+            plot_ML_outputs(self.last_eval_Y[0, :].cpu().numpy().reshape(-1, 1),
+                            self.last_ref_Y[0, :].cpu().numpy().reshape(-1, 1))
+
+        # Save the model only on rank 0
+        if self.rank == 0:
+            model_path = f"models/{args.arch}"
+            os.makedirs(model_path, exist_ok=True)
+            torch.save(self.model.state_dict(), f"{model_path}/{args.fileprefix}_model.pth")
+
+        torch.distributed.destroy_process_group()
+
+    def training_loop(self):
+
+        # Define optimizer and loss function
+        optimizer = optim.Adam(self.model.parameters(), lr=0.001)
+        criterion = nn.MSELoss()
+
+        ctx = NoContext() if args.mxp_type == "none" else \
+                torch.autocast(device_type=self.device, dtype=prec_dict[args.precision])
+        scaler = NoScaler() if args.mxp_type in ("none", "noscale") else \
+                torch.amp.GradScaler(self.device)
+        print(f"Trainer: Running with {args.mxp_type} mixed-precision strategy and {args.precision} precision.")
+
+        for epoch in range(args.epochs):
+            self.model.train()
+            self.train_sampler.set_epoch(epoch)  # Shuffle data for this epoch
+            running_loss = 0.0
+            num_batches = 0
+
+            for i, (batch_X, batch_Y) in enumerate(self.train_loader):
+                batch_X, batch_Y = batch_X.to(self.device), batch_Y.to(self.device)
+                # print(f"Rank {self.rank}: Batch moved to {self.device}")
+                optimizer.zero_grad()
+                with ctx:
+                    outputs = self.model(batch_X)
+                    loss = criterion(outputs, batch_Y)
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                running_loss += loss.item()
+                num_batches += 1
+                scaler.update()
+
+            # Compute average training loss for this epoch
+            epoch_train_loss = running_loss / num_batches
+            if self.rank == 0:
+                self.train_loss_history.append(epoch_train_loss)
+                print(f"Rank {self.rank}, Epoch {epoch + 1}/{args.epochs}, Loss: {epoch_train_loss:.4f}", flush=True)
+
+            # Compute validation loss over the test_loader
+            self.model.eval()
+            val_loss = 0.0
+            val_batches = 0
+            with torch.no_grad():
+                X_test = X_test.to(self.device)
+                Y_test = Y_test.to(self.device)
+                with ctx:
+                    Y_test_ML = self.model(X_test)
+                    loss = criterion(Y_test_ML, Y_test)
+                val_loss += loss.item()
+                val_batches += 1
+
+            epoch_val_loss = val_loss / val_batches
+            if self.rank == 0:
+                self.val_loss_history.append(epoch_val_loss)
+                print(f"Validation Loss: {epoch_val_loss:.4f}", flush=True)
+
+        self.last_eval_Y = Y_test_ML
+        self.last_ref_Y = Y_test
 
 def setup_ddp():
     """
@@ -43,6 +182,8 @@ def cleanup_ddp():
     Clean up the distributed process group.
     """
     dist.destroy_process_group()
+
+
 
 
 def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
@@ -192,7 +333,9 @@ def main():
     world_size = int(os.environ['SLURM_NTASKS'])
     rank = int(os.environ['SLURM_PROCID'])
 
-    main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test)
+    #main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test)
+    trainer = Trainer(args, X_train, Y_train, X_test, Y_test)
+    trainer.training_loop()
 
 
 if __name__ == "__main__":

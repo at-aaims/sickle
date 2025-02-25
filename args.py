@@ -52,6 +52,8 @@ parser.add_argument('--overlap', type=int, default=1, help='number of time steps
 parser.add_argument('--window', type=int, default=2, help='time window sequence size')
 parser.add_argument('--write_interval', type=int, default=100, help='OpenFOAM write interval')
 parser.add_argument('--viz', action='store_true', default=False, help='Output .pvd file for visualization in ParaView')
+parser.add_argument("--mxp_mode", default="none", choices=["none", "amp"], help="Specify how to use mixed precision for training and inference")
+parser.add_argument("--precision", default="fp32", help="Precision to be used in case mxp_mode is enabled")
 
 # SST data args
 parser.add_argument("--nx", type=int, default=512+2, required=False, help="number of grid points in x dir for full data")
