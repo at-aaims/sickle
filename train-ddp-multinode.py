@@ -39,6 +39,8 @@ class NoScaler:
         pass
 
 class Trainer:
+    """ Handles setup for DDP, sampler, dataloader and provides the training loop.
+    """
     def __init__(self, args, X_train, Y_train, X_test, Y_test):
         """
         Initialize the distributed environment for DDP using environment variables
@@ -49,6 +51,8 @@ class Trainer:
         #self.master_addr = os.environ['MASTER_ADDR']  # Address of the master node
         #self.master_port = os.environ['MASTER_PORT']  # Port of the master node
 
+        self.X_test = X_test
+        self.Y_test = Y_test
         self.to_plot = args.plot
 
         # Initialize the process group
@@ -63,10 +67,8 @@ class Trainer:
         
         # Setup data loaders with DistributedSampler
         self.train_sampler = DistributedSampler(TensorDataset(X_train, Y_train), num_replicas=self.world_size, rank=self.rank)
-        test_sampler = DistributedSampler(TensorDataset(X_test, Y_test), num_replicas=self.world_size, rank=self.rank)
 
         self.train_loader = DataLoader(TensorDataset(X_train, Y_train), batch_size=args.batch, sampler=self.train_sampler)
-        self.test_loader = DataLoader(TensorDataset(X_test, Y_test), batch_size=args.batch, sampler=test_sampler)
         print(f"Trainer: batch size: {args.batch}")
     
         input_shape = X_train.shape[1:]
@@ -105,11 +107,13 @@ class Trainer:
         optimizer = optim.Adam(self.model.parameters(), lr=0.001)
         criterion = nn.MSELoss()
 
+        dev_type = self.device.type
+
         ctx = NoContext() if args.mxp_type == "none" else \
-                torch.autocast(device_type=self.device, dtype=prec_dict[args.precision])
+                torch.autocast(device_type=dev_type, dtype=prec_dict[args.precision])
         scaler = NoScaler() if args.mxp_type in ("none", "noscale") else \
-                torch.amp.GradScaler(self.device)
-        print(f"Trainer: Running with {args.mxp_type} mixed-precision strategy and {args.precision} precision.")
+                torch.amp.GradScaler(dev_type)
+        print(f"Trainer: Running with {args.mxp_type} mixed-precision strategy, {args.precision} precision, on device type {dev_type}.")
 
         for epoch in range(args.epochs):
             self.model.train()
@@ -141,8 +145,8 @@ class Trainer:
             val_loss = 0.0
             val_batches = 0
             with torch.no_grad():
-                X_test = X_test.to(self.device)
-                Y_test = Y_test.to(self.device)
+                X_test = self.X_test.to(self.device)
+                Y_test = self.Y_test.to(self.device)
                 with ctx:
                     Y_test_ML = self.model(X_test)
                     loss = criterion(Y_test_ML, Y_test)
@@ -156,126 +160,6 @@ class Trainer:
 
         self.last_eval_Y = Y_test_ML
         self.last_ref_Y = Y_test
-
-def setup_ddp():
-    """
-    Initialize the distributed environment for DDP using environment variables
-    provided by Slurm.
-    """
-    rank = int(os.environ['SLURM_PROCID'])  # Global rank of the current process
-    world_size = int(os.environ['SLURM_NTASKS'])  # Total number of tasks
-    master_addr = os.environ['MASTER_ADDR']  # Address of the master node
-    master_port = os.environ['MASTER_PORT']  # Port of the master node
-
-    # Initialize the process group
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
-    torch.cuda.set_device(rank % torch.cuda.device_count())  # Assign GPU based on rank
-
-    # Verify GPU setup
-    print(f"Rank {rank}: Using GPU {torch.cuda.current_device()} - {torch.cuda.get_device_name()}", flush=True)
-
-    return rank, world_size
-
-
-def cleanup_ddp():
-    """
-    Clean up the distributed process group.
-    """
-    dist.destroy_process_group()
-
-
-
-
-def main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test):
-    """
-    Main worker function for each process. Initializes DDP and runs training.
-    """
-    rank, comm_size = setup_ddp()
-
-    device = torch.device(f'cuda:{rank % torch.cuda.device_count()}')
-    print(f"Rank {rank}: Device set to {device}", flush=True)
-
-    # Setup data loaders with DistributedSampler
-    train_sampler = DistributedSampler(TensorDataset(X_train, Y_train), num_replicas=world_size, rank=rank)
-    test_sampler = DistributedSampler(TensorDataset(X_test, Y_test), num_replicas=world_size, rank=rank)
-
-    train_loader = DataLoader(TensorDataset(X_train, Y_train), batch_size=args.batch, sampler=train_sampler)
-    test_loader = DataLoader(TensorDataset(X_test, Y_test), batch_size=args.batch, sampler=test_sampler)
-    print(f"batch size: {args.batch}", flush=True)
-
-    # Initialize the model and move it to the correct device
-    input_shape = X_train.shape[1:]
-    output_shape = Y_train.shape[1:] if len(Y_train.shape) > 1 else 1
-    model_module = importlib.import_module('archs.' + args.arch)
-    model = model_module.build_model(input_shape, output_shape, window=args.window).to(device)
-
-    print(f"Rank {rank}: Model moved to {device}", flush=True)
-
-    # Wrap the model with DistributedDataParallel
-    model = nn.parallel.DistributedDataParallel(model, device_ids=[device.index])
-
-    # Define optimizer and loss function
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    criterion = nn.MSELoss()
-
-    # Initialize lists to keep track of losses (recorded only on rank 0)
-    train_loss_history = []
-    val_loss_history = []
-
-    # Training loop
-    for epoch in range(args.epochs):
-        model.train()
-        train_sampler.set_epoch(epoch)  # Shuffle data for this epoch
-        running_loss = 0.0
-        num_batches = 0
-
-        for i, (batch_X, batch_Y) in enumerate(train_loader):
-            batch_X, batch_Y = batch_X.to(device), batch_Y.to(device)
-            # print(f"Rank {rank}: Batch moved to {device}")
-            optimizer.zero_grad()
-            outputs = model(batch_X)
-            loss = criterion(outputs, batch_Y)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-            num_batches += 1
-
-        # Compute average training loss for this epoch
-        epoch_train_loss = running_loss / num_batches
-        if rank == 0:
-            train_loss_history.append(epoch_train_loss)
-            print(f"Rank {rank}, Epoch {epoch + 1}/{args.epochs}, Loss: {epoch_train_loss:.4f}", flush=True)
-
-        # Compute validation loss over the test_loader
-        model.eval()
-        val_loss = 0.0
-        val_batches = 0
-        with torch.no_grad():
-            X_test = X_test.to(device)
-            Y_test = Y_test.to(device)
-            Y_test_ML = model(X_test)
-            loss = criterion(Y_test_ML, Y_test)
-            val_loss += loss.item()
-            val_batches += 1
-
-        epoch_val_loss = val_loss / val_batches
-        if rank == 0:
-            val_loss_history.append(epoch_val_loss)
-            print(f"Validation Loss: {epoch_val_loss:.4f}", flush=True)
-
-    # Plot training diagnostics
-    if rank == 0 and args.plot:
-        plot_learning_curve(train_loss_history, val_loss_history)
-        plot_ML_outputs(Y_test_ML[0, :].cpu().numpy().reshape(-1, 1), Y_test[0, :].cpu().numpy().reshape(-1, 1))
-
-    # Save the model only on rank 0
-    if rank == 0:
-        model_path = f"models/{args.arch}"
-        os.makedirs(model_path, exist_ok=True)
-        torch.save(model.state_dict(), f"{model_path}/{args.fileprefix}_model.pth")
-
-    cleanup_ddp()
-
 
 def main():
     """
