@@ -15,7 +15,7 @@ def load_config(file_path):
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("config_file", nargs="?", default=None, help="Path to the YAML configuration file. If not provided, default parameters will be used.")
 archs = ['fcn', 'fcn_sst', 'lstm', 'transformer', 'MLP_transformer', 'CNN_transformer']
-choices = ['maxent', 'random', 'full', 'uips']
+choices = ['maxent', 'random', 'full', 'uips', 'lhs', 'stratified']
 parser.add_argument('-m', '--method', choices=choices, default='maxent', help='subsample method')
 parser.add_argument('--arch', type=str, default='fcn_sst', choices=archs, help='Type of neural network architecture')
 parser.add_argument('--bins', type=int, default=100, help='Number of bins to represent PDFs')
