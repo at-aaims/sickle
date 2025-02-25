@@ -98,16 +98,18 @@ def plot_histograms(X_train, X_test, Y_train, Y_test):
     plt.close()
 
 
-def plot_learning_curve(train_loss_history, val_loss_history):
-    plt.figure(figsize=(10,5))
+def plot_learning_curve(train_loss_history, val_loss_history, title=None):
+    plt.figure(figsize=(10,5.5))
     plt.rcParams.update({'font.size': 18})
-    plt.title('Learning curve')
+    if title:
+        plt.title(title)
     plt.plot(train_loss_history, label='training')
     plt.plot(val_loss_history, label='validation',alpha=0.5)
     plt.yscale('log')
     plt.xlabel('Epoch'); plt.ylabel(r'Loss ($mse$)')
     plt.legend(frameon=False);
-    plt.savefig(os.path.join(args.plot_dir, f'ML_loss-curves.png'), dpi=100)
+    plt.grid("on")
+    plt.savefig(os.path.join(args.plot_dir, f'ML_loss-curves.png'), dpi=100, bbox_inches='tight')
     plt.close()
 
 
