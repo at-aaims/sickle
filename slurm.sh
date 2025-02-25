@@ -4,7 +4,6 @@
 #SBATCH -p batch  # partition
 ##SBATCH -q debug
 #SBATCH -N 1
-#SBATCH -S 0  # override -S 8 default setting to allow use of 64 procs/node
 #SBATCH -t 01:00:00
 #SBATCH -o /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
 #SBATCH -e /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.err
