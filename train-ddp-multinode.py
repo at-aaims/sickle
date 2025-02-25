@@ -90,8 +90,8 @@ class Trainer:
         # Plot training diagnostics
         if self.rank == 0 and self.to_plot and self.last_eval_Y is not None:
             plot_learning_curve(self.train_loss_history, self.val_loss_history)
-            plot_ML_outputs(self.last_eval_Y[0, :].cpu().numpy().reshape(-1, 1),
-                            self.last_ref_Y[0, :].cpu().numpy().reshape(-1, 1))
+            plot_ML_outputs(self.last_eval_Y[0, :].to(dtype=torch.float).cpu().numpy().reshape(-1, 1),
+                            self.last_ref_Y[0, :].to(dtype=torch.float).cpu().numpy().reshape(-1, 1))
 
         # Save the model only on rank 0
         if self.rank == 0:
@@ -109,11 +109,11 @@ class Trainer:
 
         dev_type = self.device.type
 
-        ctx = NoContext() if args.mxp_type == "none" else \
+        ctx = NoContext() if args.mxp_mode == "none" else \
                 torch.autocast(device_type=dev_type, dtype=prec_dict[args.precision])
-        scaler = NoScaler() if args.mxp_type in ("none", "noscale") else \
+        scaler = NoScaler() if args.mxp_mode in ("none", "noscale") else \
                 torch.amp.GradScaler(dev_type)
-        print(f"Trainer: Running with {args.mxp_type} mixed-precision strategy, {args.precision} precision, on device type {dev_type}.")
+        print(f"Trainer: Running with {args.mxp_mode} mixed-precision strategy, {args.precision} precision, on device type {dev_type}.")
 
         for epoch in range(args.epochs):
             self.model.train()
@@ -125,9 +125,11 @@ class Trainer:
                 batch_X, batch_Y = batch_X.to(self.device), batch_Y.to(self.device)
                 # print(f"Rank {self.rank}: Batch moved to {self.device}")
                 optimizer.zero_grad()
+                # ctx currently controls precision of operations
                 with ctx:
                     outputs = self.model(batch_X)
                     loss = criterion(outputs, batch_Y)
+                # For mxp training, scaler scales loss to reduce chance of underflow in gradients
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 running_loss += loss.item()
@@ -138,7 +140,6 @@ class Trainer:
             epoch_train_loss = running_loss / num_batches
             if self.rank == 0:
                 self.train_loss_history.append(epoch_train_loss)
-                print(f"Rank {self.rank}, Epoch {epoch + 1}/{args.epochs}, Loss: {epoch_train_loss:.4f}", flush=True)
 
             # Compute validation loss over the test_loader
             self.model.eval()
@@ -156,7 +157,7 @@ class Trainer:
             epoch_val_loss = val_loss / val_batches
             if self.rank == 0:
                 self.val_loss_history.append(epoch_val_loss)
-                print(f"Validation Loss: {epoch_val_loss:.4f}", flush=True)
+                print(f"Epoch {epoch+1:3d}/{args.epochs:3d} - Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f}", flush=True)
 
         self.last_eval_Y = Y_test_ML
         self.last_ref_Y = Y_test

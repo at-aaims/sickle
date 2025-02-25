@@ -99,7 +99,7 @@ def plot_histograms(X_train, X_test, Y_train, Y_test):
 
 
 def plot_learning_curve(train_loss_history, val_loss_history):
-    #plt.figure(figsize=(10,5))
+    plt.figure(figsize=(10,5.5))
     plt.rcParams.update({'font.size': 18})
     plt.title('Learning curve')
     plt.plot(train_loss_history, label='training')
@@ -108,7 +108,7 @@ def plot_learning_curve(train_loss_history, val_loss_history):
     plt.xlabel('Epoch'); plt.ylabel(r'Loss ($mse$)')
     plt.legend(frameon=False);
     plt.grid("on")
-    plt.savefig(os.path.join(args.plot_dir, f'ML_loss-curves.png'), dpi=100)
+    plt.savefig(os.path.join(args.plot_dir, f'ML_loss-curves.png'), dpi=100, bbox_inches='tight')
     plt.close()
 
 
