@@ -98,10 +98,11 @@ def plot_histograms(X_train, X_test, Y_train, Y_test):
     plt.close()
 
 
-def plot_learning_curve(train_loss_history, val_loss_history):
+def plot_learning_curve(train_loss_history, val_loss_history, title=None):
     plt.figure(figsize=(10,5.5))
     plt.rcParams.update({'font.size': 18})
-    plt.title('Learning curve')
+    if title:
+        plt.title(title)
     plt.plot(train_loss_history, label='training')
     plt.plot(val_loss_history, label='validation',alpha=0.5)
     plt.yscale('log')
