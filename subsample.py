@@ -85,8 +85,8 @@ if __name__ == "__main__":
     print(f"Xout: {Xout.shape}; Yout: {Yout.shape}")
 
     # Save to VTK unstructured format
-    #if args.viz:
-    #    save_vtu(X, Y, x, y, z, indices_list, args.output_dir, args.fileprefix)
+    if args.viz:
+        save_vtu(X, Y, x, y, z, indices_list, args.output_dir, args.fileprefix)
 
     # Reshape Xout and Yout to 1D or 3D based on args.method and args.field_prediction_type
     if args.method == "full":
