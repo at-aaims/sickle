@@ -214,10 +214,10 @@ def main():
     print(f"Y_train: {Y_train.shape}; Y_test: {Y_test.shape}", flush=True)
 
     # Determine world size and launch workers
-    world_size = int(os.environ['SLURM_NTASKS'])
-    rank = int(os.environ['SLURM_PROCID'])
-
+    #world_size = int(os.environ['SLURM_NTASKS'])
+    #rank = int(os.environ['SLURM_PROCID'])
     #main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test)
+
     trainer = Trainer(args, X_train, Y_train, X_test, Y_test)
     trainer.training_loop()
 
