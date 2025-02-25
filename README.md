@@ -87,7 +87,7 @@ See [uips/README.md](uips/README.md)
 These all work:
 
     CASE=config/P1F4R32/sample-reconstruction.yaml
-    srun -N $SLURM_NNODES -n8 python -u train-ddp-multinode.py $CASE
+    srun -N $SLURM_NNODES -n8 python -u train.py $CASE
     srun python -u train-ddp.py $CASE
     python -u train.py $CASE
 

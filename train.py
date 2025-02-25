@@ -1,137 +1,227 @@
-import importlib
-import numpy as np
 import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
 from torch.utils.data import DataLoader, TensorDataset
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, PowerTransformer
+from torch.utils.data.distributed import DistributedSampler
+import torch.distributed as dist
+import torch.amp
+import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, PowerTransformer
+import importlib
 
 from args import args
-from constants import FieldPredictionType
+from constants import *
 from dataloaders import create_sequences
-from helpers import scale, print_stats
-from plotting import plot_histograms, plot_ML_outputs, plot_learning_curve
-
-# Set device
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+from helpers import scale
+from plotting import plot_ML_outputs, plot_learning_curve
 
 outfilename = f"subsampled_{args.fileprefix}.npz"
-data = np.load(os.path.join(args.output_dir, outfilename))
-X, Y = data['X'], data['Y']
 
-print(X.shape, Y.shape, len(Y.shape))
+prec_dict = {"int8": torch.int8,
+             "fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float,
+             "fp64": torch.float64}
 
-if args.sequence:
-    X, Y = create_sequences(X, Y, args)
-else:
-    Y = np.squeeze(Y)
-print(f"After sequence X: {X.shape}; Y: {Y.shape}")
+class NoContext:
+    def __enter__(self):
+        return None
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        pass
 
-# transpose shape of X and Y to be [B,T,C,Samples] and [B,T,C,H,W,D]
-if args.method == "full":
-    X = X.transpose(0,1,5,2,3,4)
-else:
-    X = X.transpose(0,1,3,2)
-if args.field_prediction_type == FieldPredictionType.GLOBAL:
-    Y = Y.transpose(0,1,3,2)
-elif args.field_prediction_type == FieldPredictionType.LOCAL:
-    Y = Y.transpose(0,1,3,2)
-elif args.field_prediction_type == FieldPredictionType.FULL:
-    Y = Y.transpose(0,1,5,2,3,4)
-else:
-    raise Exception("Enter a valid `args.target`.")
-print(f"X: {X.shape}; Y: {Y.shape}")
+class NoScaler:
+    """ Dummy class that provides the trivial protocol of PyTorch gradient scaler."""
+    def scale(self, loss):
+        return loss
+    def step(self, optimizer):
+        optimizer.step()
+    def update(self):
+        pass
 
-# train:val split
-X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_frac, shuffle=False)
+class Trainer:
+    """ Handles setup for DDP, sampler, dataloader and provides the training loop.
+    """
+    def __init__(self, args, X_train, Y_train, X_test, Y_test):
+        """
+        Initialize the distributed environment for DDP using environment variables
+        provided by Slurm, set up model and dataset.
+        """
+        self.rank = int(os.environ['SLURM_PROCID'])  # Global rank of the current process
+        self.world_size = int(os.environ['SLURM_NTASKS'])  # Total number of tasks
+        #self.master_addr = os.environ['MASTER_ADDR']  # Address of the master node
+        #self.master_port = os.environ['MASTER_PORT']  # Port of the master node
 
-# Scale the data
-scaler_x = eval(args.xscaler)()
-X_train = scale(scaler_x.fit_transform, X_train)
-X_test = scale(scaler_x.transform, X_test)
-if args.yscaler != 'None':
-    scaler_y = eval(args.yscaler)()
-    Y_train = scale(scaler_y.fit_transform, Y_train)
-    Y_test = scale(scaler_y.transform, Y_test)
+        self.X_test = X_test
+        self.Y_test = Y_test
+        self.to_plot = args.plot
 
-# Convert to PyTorch tensors
-X_train = torch.tensor(X_train, dtype=torch.float32)
-X_test = torch.tensor(X_test, dtype=torch.float32)
-Y_train = torch.tensor(Y_train, dtype=torch.float32)
-Y_test = torch.tensor(Y_test, dtype=torch.float32)
-print(f"X_train: {X_train.shape}; X_test: {X_test.shape}")
-print(f"Y_train: {Y_train.shape}; Y_test: {Y_test.shape}")
+        # Initialize the process group
+        torch.distributed.init_process_group("nccl", rank=self.rank, world_size=self.world_size)
+        torch.cuda.set_device(self.rank % torch.cuda.device_count())  # Assign GPU based on rank
 
-# Define model
-input_shape = X_train.shape[1:]
-output_shape = Y_train.shape[1:]
-print('**', output_shape)
-model_module = importlib.import_module('archs.' + args.arch)
-model = model_module.build_model(input_shape, output_shape, window=args.window).to(device)
-model.to(device)
-print(model)
+        # Verify GPU setup
+        print(f"Trainer: Rank {self.rank}: Using GPU {torch.cuda.current_device()} - {torch.cuda.get_device_name()}")
+        
+        self.device = torch.device(f'cuda:{self.rank % torch.cuda.device_count()}')
+        print(f"Trainer: Rank {self.rank}: Device set to {self.device}")
+        
+        # Setup data loaders with DistributedSampler
+        self.train_sampler = DistributedSampler(TensorDataset(X_train, Y_train), num_replicas=self.world_size, rank=self.rank)
 
-# Define optimizer and loss function
-optimizer = optim.Adam(model.parameters(), lr=0.001)
-criterion = nn.MSELoss()
+        self.train_loader = DataLoader(TensorDataset(X_train, Y_train), batch_size=args.batch, sampler=self.train_sampler)
+        print(f"Trainer: batch size: {args.batch}")
+    
+        input_shape = X_train.shape[1:]
+        output_shape = Y_train.shape[1:] if len(Y_train.shape) > 1 else 1
+        model_module = importlib.import_module('archs.' + args.arch)
+        model = model_module.build_model(input_shape, output_shape, window=args.window).to(self.device)
 
-# Train model
-def train_model(model, optimizer, criterion, X_train, Y_train, X_test, Y_test, args):
-    train_loss_history = () # for loss curves
-    val_loss_history = () # for loss curves
-    model.train()
-    train_loader = DataLoader(TensorDataset(X_train, Y_train), batch_size=args.batch, shuffle=True)
-    test_loader = DataLoader(TensorDataset(X_test, Y_test), batch_size=args.batch, shuffle=False)
+        print(f"Trainer: Rank {self.rank}: Model moved to {self.device}")
+        # Wrap the model with DistributedDataParallel
+        self.model = nn.parallel.DistributedDataParallel(model, device_ids=[self.device.index])
 
-    running_loss = 0.0 # for saving train loss for curves
+        # Initialize lists to keep track of losses (recorded only on rank 0)
+        self.train_loss_history = []
+        self.val_loss_history = []
+        self.last_eval_Y = None
+        self.last_ref_Y = None
 
-    for epoch in range(args.epochs):
-        model.train()
-        ibatch = 0 # for avg loss over all batches
-        for batch_X, batch_Y in train_loader:
-            batch_X, batch_Y = batch_X.to(device), batch_Y.to(device)  # Move batch to the appropriate device
-            optimizer.zero_grad()
-            outputs = model(batch_X)
-            loss = criterion(outputs, batch_Y)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-            ibatch += 1
+    def __del__(self):
+        # Plot training diagnostics
+        if self.rank == 0 and self.to_plot and self.last_eval_Y is not None:
+            plot_learning_curve(self.train_loss_history, self.val_loss_history)
+            plot_ML_outputs(self.last_eval_Y[0, :].to(dtype=torch.float).cpu().numpy().reshape(-1, 1),
+                            self.last_ref_Y[0, :].to(dtype=torch.float).cpu().numpy().reshape(-1, 1))
 
-        train_loss_history = train_loss_history + (running_loss / ibatch,)
-        running_loss = 0.0
-        print(f'Epoch {epoch+1}/{args.epochs}, Loss: {train_loss_history[-1]:1.3e}')
+        # Save the model only on rank 0
+        if self.rank == 0:
+            model_path = f"models/{args.arch}"
+            os.makedirs(model_path, exist_ok=True)
+            torch.save(self.model.state_dict(), f"{model_path}/{args.fileprefix}_model.pth")
 
-        model.eval()
-        with torch.no_grad():
-            val_loss = sum(criterion(model(batch_X.to(device)), batch_Y.to(device)) for batch_X, batch_Y in test_loader) / len(test_loader)
-            val_loss_history = val_loss_history + (val_loss.item(),)
-        if (epoch + 1) % args.patience == 0:
-            print(f'Validation Loss: {val_loss_history[-1]:1.3e}')
+        torch.distributed.destroy_process_group()
 
-    return train_loss_history, val_loss_history
+    def training_loop(self):
 
-train_loss_history, val_loss_history = train_model(model, optimizer, criterion, X_train, Y_train, X_test, Y_test, args)
-plot_learning_curve(train_loss_history, val_loss_history)
+        # Define optimizer and loss function
+        optimizer = optim.Adam(self.model.parameters(), lr=0.001)
+        criterion = nn.MSELoss()
 
-# Evaluate the model
-model.eval()
-with torch.no_grad():
-    X_test = X_test.to(device)
-    Y_test = Y_test.to(device)
-    Y_test_ML = model(X_test)
-    test_loss = criterion(Y_test_ML, Y_test)
-print(f'Loss ({args.fileprefix}): {test_loss.item():.04f}')
-plot_ML_outputs(Y_test_ML[0, :].cpu().numpy().reshape(-1, 1), Y_test[0, :].cpu().numpy().reshape(-1, 1))
+        dev_type = self.device.type
 
-# Save model
-model_path = f"models/{args.arch}"
-if not os.path.exists(model_path): os.makedirs(model_path)
-torch.save(model.state_dict(), f"{model_path}/{args.fileprefix}_model.pth")
-np.savez(os.path.join(args.output_dir, f"{args.fileprefix}_test.npz"), X_test=X_test.cpu().numpy(), \
-                                           Y_test=Y_test.cpu().numpy(), \
-                                           X_train=X_train.cpu().numpy(), \
-                                           Y_train=Y_train.cpu().numpy())
+        ctx = NoContext() if args.mxp_mode == "none" else \
+                torch.autocast(device_type=dev_type, dtype=prec_dict[args.precision])
+        scaler = NoScaler() if args.mxp_mode in ("none", "noscale") else \
+                torch.amp.GradScaler(dev_type)
+        print(f"Trainer: Running with {args.mxp_mode} mixed-precision strategy, {args.precision} precision, on device type {dev_type}.")
+
+        for epoch in range(args.epochs):
+            self.model.train()
+            self.train_sampler.set_epoch(epoch)  # Shuffle data for this epoch
+            running_loss = 0.0
+            num_batches = 0
+
+            for i, (batch_X, batch_Y) in enumerate(self.train_loader):
+                batch_X, batch_Y = batch_X.to(self.device), batch_Y.to(self.device)
+                # print(f"Rank {self.rank}: Batch moved to {self.device}")
+                optimizer.zero_grad()
+                # ctx currently controls precision of operations
+                with ctx:
+                    outputs = self.model(batch_X)
+                    loss = criterion(outputs, batch_Y)
+                # For mxp training, scaler scales loss to reduce chance of underflow in gradients
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                running_loss += loss.item()
+                num_batches += 1
+                scaler.update()
+
+            # Compute average training loss for this epoch
+            epoch_train_loss = running_loss / num_batches
+            if self.rank == 0:
+                self.train_loss_history.append(epoch_train_loss)
+
+            # Compute validation loss over the test_loader
+            self.model.eval()
+            val_loss = 0.0
+            val_batches = 0
+            with torch.no_grad():
+                X_test = self.X_test.to(self.device)
+                Y_test = self.Y_test.to(self.device)
+                with ctx:
+                    Y_test_ML = self.model(X_test)
+                    loss = criterion(Y_test_ML, Y_test)
+                val_loss += loss.item()
+                val_batches += 1
+
+            epoch_val_loss = val_loss / val_batches
+            if self.rank == 0:
+                self.val_loss_history.append(epoch_val_loss)
+                print(f"Epoch {epoch+1:3d}/{args.epochs:3d} - Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f}", flush=True)
+
+        self.last_eval_Y = Y_test_ML
+        self.last_ref_Y = Y_test
+
+def main():
+    """
+    Main function to initialize data, parse arguments, and start the DDP training.
+    """
+    # Preprocess data
+    data = np.load(os.path.join(args.output_dir, outfilename))
+    X, Y = data['X'], data['Y']
+    print(f"X: {X.shape}; Y: {Y.shape}", flush=True) # X: [T, [X,Y,Z]-or-NSAMPLES, C]; Y: [T, [X,Y,Z]-or-NSAMPLES, C]
+
+    # Convert timeseries to sequences
+    if args.sequence:
+        X, Y = create_sequences(X, Y, args)
+    else:
+        Y = np.squeeze(Y)
+    print(f"After sequence X: {X.shape}; Y: {Y.shape}", flush=True)
+
+    # Transpose shape of X and Y to be [B,T,C,Samples] and [B,T,C,H,W,D]
+    if args.method == "full":
+        X = X.transpose(0,1,5,2,3,4)
+    else:
+        X = X.transpose(0,1,3,2)
+
+    if args.field_prediction_type == FieldPredictionType.GLOBAL:
+        Y = Y.transpose(0,1,3,2)
+    elif args.field_prediction_type == FieldPredictionType.LOCAL:
+        Y = Y.transpose(0,1,3,2)
+    elif args.field_prediction_type == FieldPredictionType.FULL:
+        Y = Y.transpose(0,1,5,2,3,4)
+    else:
+        raise Exception("Enter a valid `args.target`.")
+    print(f"X: {X.shape}; Y: {Y.shape}", flush=True)
+
+    # train:val split
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_frac, shuffle=False)
+
+    # Scale the data
+    scaler_x = eval(args.xscaler)()
+    X_train = scale(scaler_x.fit_transform, X_train)
+    X_test = scale(scaler_x.transform, X_test)
+    if args.yscaler != 'None':
+        scaler_y = eval(args.yscaler)()
+        Y_train = scale(scaler_y.fit_transform, Y_train)
+        Y_test = scale(scaler_y.transform, Y_test)
+
+    # Convert to PyTorch tensors
+    X_train = torch.tensor(X_train, dtype=torch.float32)
+    X_test = torch.tensor(X_test, dtype=torch.float32)
+    Y_train = torch.tensor(Y_train, dtype=torch.float32)
+    Y_test = torch.tensor(Y_test, dtype=torch.float32)
+    print(f"X_train: {X_train.shape}; X_test: {X_test.shape}", flush=True)
+    print(f"Y_train: {Y_train.shape}; Y_test: {Y_test.shape}", flush=True)
+
+    # Determine world size and launch workers
+    #world_size = int(os.environ['SLURM_NTASKS'])
+    #rank = int(os.environ['SLURM_PROCID'])
+    #main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test)
+
+    trainer = Trainer(args, X_train, Y_train, X_test, Y_test)
+    trainer.training_loop()
+
+
+if __name__ == "__main__":
+    main()
