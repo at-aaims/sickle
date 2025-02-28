@@ -14,7 +14,7 @@ import importlib
 from args import args
 from constants import *
 from dataloaders import create_sequences
-from helpers import scale
+from helpers import scale, compute_memory
 from plotting import plot_ML_outputs, plot_learning_curve
 
 outfilename = f"subsampled_{args.fileprefix}.npz"
@@ -168,8 +168,14 @@ def main():
     """
     # Preprocess data
     data = np.load(os.path.join(args.output_dir, outfilename))
+
+    total_memory = compute_memory(data)
+    print(f"\nTotal Estimated Memory Usage: {total_memory['bytes']} bytes "
+          f"({total_memory['MB']:.2f} MB, {total_memory['GB']:.4f} GB)")
+
     X, Y = data['X'], data['Y']
     print(f"X: {X.shape}; Y: {Y.shape}", flush=True) # X: [T, [X,Y,Z]-or-NSAMPLES, C]; Y: [T, [X,Y,Z]-or-NSAMPLES, C]
+
 
     # Convert timeseries to sequences
     if args.sequence:

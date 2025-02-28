@@ -120,3 +120,52 @@ def check_and_create_dirs(directory):
     """ Checks if a directory exists, and creates it if it doesn't.  """
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+def estimate_memory(shape, dtype):
+    """
+    Estimate the memory required for a NumPy array.
+
+    Parameters:
+    - shape (tuple): The shape of the array.
+    - dtype (numpy.dtype or str): The data type of the array.
+
+    Returns:
+    - memory_bytes (int): The estimated memory usage in bytes.
+    """
+    dtype = np.dtype(dtype)
+    num_elements = np.prod(shape)  # Total number of elements
+    bytes_per_element = dtype.itemsize  # Bytes per element
+    return num_elements * bytes_per_element  # Total memory in bytes
+
+def compute_memory(data):
+    """
+    Compute the total memory required for all arrays in a loaded NPZ file.
+
+    Parameters:
+    - data (np.lib.npyio.NpzFile): The loaded NPZ file from np.load(npz_file).
+
+    Returns:
+    - total_memory (dict): Total memory in bytes, MB, and GB.
+    """
+    total_memory_bytes = 0
+
+    for key in data.files:
+        array = data[key]
+        memory_bytes = estimate_memory(array.shape, array.dtype)
+        print(f"Array '{key}': {memory_bytes / (1024**2):.2f} MB")
+        total_memory_bytes += memory_bytes
+
+    return {
+        "bytes": total_memory_bytes,
+        "MB": total_memory_bytes / (1024**2),
+        "GB": total_memory_bytes / (1024**3),
+    }
+
+
+if __name__ == "__main__":
+    # Example usage:
+    shape = (128, 16, 128)
+    dtype = np.float64
+    memory_estimate = estimate_memory(shape, dtype)
+    print(f"Estimated memory usage: {memory_estimate['bytes']} bytes "
+          f"({memory_estimate['MB']:.2f} MB, {memory_estimate['GB']:.4f} GB)")
