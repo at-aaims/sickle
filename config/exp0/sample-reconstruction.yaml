@@ -23,7 +23,7 @@ subsample:
 
 train:
   epochs: 100
-  batch: 4
+  batch: 16
   patience: 100
   target: p_full
   window: 2

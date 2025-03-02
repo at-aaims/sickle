@@ -1,4 +1,5 @@
 import os
+import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -120,8 +121,10 @@ class Trainer:
             self.train_sampler.set_epoch(epoch)  # Shuffle data for this epoch
             running_loss = 0.0
             num_batches = 0
+            start_epoch = time.perf_counter()
 
             for i, (batch_X, batch_Y) in enumerate(self.train_loader):
+                start_iter = time.perf_counter()
                 batch_X, batch_Y = batch_X.to(self.device), batch_Y.to(self.device)
                 # print(f"Rank {self.rank}: Batch moved to {self.device}")
                 optimizer.zero_grad()
@@ -135,6 +138,12 @@ class Trainer:
                 running_loss += loss.item()
                 num_batches += 1
                 scaler.update()
+                end_iter = time.perf_counter()
+                print(f"Epoch {epoch+1}, Iteration {i+1}/{len(self.train_loader)} took {end_iter - start_iter:.4f} seconds")
+            end_epoch = time.perf_counter()
+
+            if self.rank == 0:
+                print(f"Epoch {epoch+1} took {end_epoch - start_epoch:.2f} seconds in total")
 
             # Compute average training loss for this epoch
             epoch_train_loss = running_loss / num_batches
