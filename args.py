@@ -55,6 +55,10 @@ parser.add_argument('--viz', action='store_true', default=False, help='Output .p
 parser.add_argument("--mxp_mode", default="none", choices=["none", "amp"], help="Specify how to use mixed precision for training and inference")
 parser.add_argument("--precision", default="fp32", help="Precision to be used in case mxp_mode is enabled")
 
+choices = [None, "maxent", "random"]
+parser.add_argument("--hypercubes", default=choices[0], choices=choices, help="Extract a number of hypercubes")
+parser.add_argument("--num_hypercubes", type=int, default=1, help="Number of hypercubes to extract")
+
 # SST data args
 parser.add_argument("--nx", type=int, default=512+2, required=False, help="number of grid points in x dir for full data")
 parser.add_argument("--ny", type=int, default=512, required=False, help="number of grid points in y dir for full data")
