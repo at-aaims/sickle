@@ -117,8 +117,13 @@ if rank == 0:
     
     # Now, compute the subsampled outputs.
     num_timesteps = X.shape[0]
+
     # Preallocate output arrays based on X and Y shapes:
-    Xout = np.zeros((num_timesteps, args.num_samples, X.shape[2]))
+    if args.method == "full": 
+        Xout = np.zeros((num_timesteps, X.shape[1], X.shape[2]))
+    else:
+        Xout = np.zeros((num_timesteps, args.num_samples, X.shape[2]))
+
     if args.field_prediction_type == FieldPredictionType.GLOBAL:
         Yout = np.zeros((num_timesteps, 1, Y.shape[2]))
     elif args.field_prediction_type == FieldPredictionType.FULL:
@@ -134,7 +139,12 @@ if rank == 0:
             ts = timestep + sub_timestep
             if ts >= num_timesteps:
                 continue  # Skip if we exceed available timesteps.
-            Xout[ts, :, :] = X[ts, indices, :]
+            print(Xout.shape, X.shape)
+            if args.method == "full":
+                Xout[ts] = X[ts]
+            else:
+                Xout[ts, :] = X[ts, indices]
+
             if args.field_prediction_type == FieldPredictionType.GLOBAL:
                 subsampled_Y = Y[ts, :]
             elif args.field_prediction_type == FieldPredictionType.FULL:

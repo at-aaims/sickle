@@ -41,48 +41,19 @@ class DataLoaderSSTBinary(DataLoader):
     def _load_and_process(self, var, ts):
         """
         Loads a variable file at a given timestep and reshapes it.
-        When hypercube extraction is enabled (i.e. args.hypercubes is not None),
-        it uses the hypercube dimensions and, if necessary, partitions the full dataset
-        into hypercubes. Otherwise, it extracts a single subcube from the full dataset.
+        It uses the hypercube dimensions and, if necessary, partitions the full dataset
+        into hypercubes.
         """
+        dims_full = (self.args.nx, self.args.ny, self.args.nz)
+        dims_sl = (self.args.nxsl, self.args.nysl, self.args.nzsl)
+
         file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
         print(f'Loading file: {file_path}')
 
-        # If hypercube extraction is enabled, use cube dimensions; else use full dataset dims.
-        dims = (self.args.nxsl, self.args.nysl, self.args.nzsl)
+        data = extract_hypercubes(file_path, self.args.nbytes, dims_full, dims_sl, \
+                                  self.args.hypercubes, self.args.num_hypercubes)
 
-        # Load the data using the chosen dimensions.
-        box = get_data_memmap(
-            file_path,
-            dims[0], dims[1], dims[2],
-            self.args.nxsl, self.args.nysl, self.args.nzsl,
-            self.args.nxoffset, self.args.nyoffset, self.args.nzoffset,
-            self.args.nxskip, self.args.nyskip, self.args.nzskip,
-            self.args.nbytes
-        )
-        full_data = box.reshape(dims)
-
-        if self.args.hypercubes is not None:
-            # If the file size exactly matches one hypercube, simply wrap it.
-            if full_data.size == (self.args.nsxl * self.args.nsyl * self.args.nzsl):
-                return full_data.reshape(1, -1)
-            else:
-                # Otherwise, assume the file holds a full dataset and partition it.
-                hypercubes, _ = extract_hypercubes(
-                    full_data,
-                    cube_shape=(self.args.nsxl, self.args.nsyl, self.args.nzsl),
-                    method=self.args.hypercubes,   # "random" or "maxent"
-                    num_cubes=self.args.num_hypercubes
-                )
-                return hypercubes.reshape(hypercubes.shape[0], -1)
-        else:
-            # When not using hypercube extraction, extract a subcube based on offsets.
-            subcube = full_data[
-                self.args.nxoffset:self.args.nxoffset+self.args.nxsl,
-                self.args.nyoffset:self.args.nysl,
-                self.args.nzoffset:self.args.nzoffset+self.args.nzsl
-            ]
-            return subcube.reshape(-1)
+        return data.reshape(-1)
 
     def load_multiple_timesteps(self, write_interval, num_timesteps, target, cv, file_filter='*_*'):
         self.path = os.path.dirname(self.path)
@@ -110,49 +81,28 @@ class DataLoaderSSTBinary(DataLoader):
             print('Filtered timesteps to load:', t_labels)
 
         num_timesteps = len(t_labels)
-        hypercube_enabled = getattr(self.args, 'subsample_hypercube', False)
-        if hypercube_enabled:
-            # When extracting hypercubes, each loaded file returns an array of shape:
-            # (num_hypercubes, flattened_cube_size)
-            flattened_cube_size = self.args.nsxl * self.args.nsyl * self.args.nzsl
-            num_points = self.args.num_hypercubes  # number of hypercubes per file
-            X = np.zeros((num_timesteps, num_points, flattened_cube_size, len(x_labels)))
-            Y = np.zeros((num_timesteps, num_points, flattened_cube_size, len(y_labels)))
-            cv_arr = np.zeros((num_timesteps, num_points, flattened_cube_size))
-        else:
-            num_points = self.num_pts
-            X = np.zeros((num_timesteps, num_points, len(x_labels)))
-            Y = np.zeros((num_timesteps, num_points, len(y_labels)))
-            cv_arr = np.zeros((num_timesteps, num_points))
+        hypercube_enabled = self.args.hypercubes
+
+        # When extracting hypercubes, each loaded file returns an array of shape:
+        num_points = self.args.num_hypercubes * self.num_pts  # number of hypercubes per file
+        X = np.zeros((num_timesteps, num_points, len(x_labels)))
+        Y = np.zeros((num_timesteps, num_points, len(y_labels)))
+        cv_arr = np.zeros((num_timesteps, num_points, len(cv_labels)))
 
         print("Loading NN input vars...")
         for i, var in enumerate(x_labels):
             for j, ts in enumerate(t_labels):
-                data = self._load_and_process(var, ts)
-                if hypercube_enabled:
-                    # data shape: (num_hypercubes, flattened_cube_size)
-                    X[j, :, :, i] = data
-                else:
-                    # data shape: (flattened_cube_size,)
-                    X[j, :, i] = data
+                X[j, :, i] = self._load_and_process(var, ts)
 
         print("Loading NN output vars...")
         for i, var in enumerate(y_labels):
             for j, ts in enumerate(t_labels):
-                data = self._load_and_process(var, ts)
-                if hypercube_enabled:
-                    Y[j, :, :, i] = data
-                else:
-                    Y[j, :, i] = data
+                Y[j, :, i] = self._load_and_process(var, ts)
 
         print("Loading cluster vars...")
         for i, var in enumerate(cv_labels):
             for j, ts in enumerate(t_labels):
-                data = self._load_and_process(var, ts)
-                if hypercube_enabled:
-                    cv_arr[j, :, :] = data
-                else:
-                    cv_arr[j, :] = data
+                cv_arr[j, :, i] = self._load_and_process(var, ts)
 
         return X, Y, cv_arr
 
@@ -185,8 +135,8 @@ if __name__ == "__main__":
             self.timesteps = None
             # Flag to enable hypercube extraction and its parameters:
             self.subsample_hypercube = True
-            self.nsxl = 32
-            self.nsyl = 32
+            self.nxsl = 32
+            self.nysl = 32
             self.nzsl = 32
             self.subsample_method = 'random'
             self.num_hypercubes = 16  # for example

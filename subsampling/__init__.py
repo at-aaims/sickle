@@ -1,3 +1,4 @@
+import numpy as np
 from .random import RandomSubsampler
 from .maxent import MaxentSubsampler
 from .phase_space import PhaseSpaceSubsampler
@@ -17,6 +18,6 @@ def get_subsampler(data, args, **kwargs):
     elif args.method == "lhs":
         return LatinHypercubeSubsampler(data, args)
     elif args.method == "full":
-        raise ValueError("full not yet supported")
+        return np.arange(data.shape[1])
     else:
         raise ValueError(f"Unsupported sampling method: {args.method}")
