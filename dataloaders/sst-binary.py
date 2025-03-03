@@ -23,6 +23,32 @@ class DataLoaderSSTBinary(DataLoader):
                 unique_times.add(float(match.group(1)))
         return sorted(unique_times)
 
+    def _load_and_reshape(self, var, ts):
+        """
+        Load data for a given variable and timestep, and reshape it.
+        """
+        file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
+        print(f'Loading file: {file_path}')
+        box = get_data_memmap(
+            file_path,
+            self.args.nx, self.args.ny, self.args.nz,
+            self.args.nxsl, self.args.nysl, self.args.nzsl,
+            self.args.nxoffset, self.args.nyoffset, self.args.nzoffset,
+            self.args.nxskip, self.args.nyskip, self.args.nzskip,
+            self.args.nbytes
+        )
+        return box.reshape(-1)
+
+    def _load_vars(self, labels, t_labels, target, assign_func):
+        """
+        Load a set of variables and assign them into the target array using
+        a provided assignment function.
+        """
+        for i, var in enumerate(labels):
+            for j, ts in enumerate(t_labels):
+                data = self._load_and_reshape(var, ts)
+                assign_func(target, j, i, data)
+
     def load_xyz(self):
         x = get_1Dgrid(self.args.Lh, self.args.nx-2, self.args.nxoffset, self.args.nxsl, self.args.nxskip)
         if self.args.gravity == 'y':
@@ -70,49 +96,23 @@ class DataLoaderSSTBinary(DataLoader):
         cv_arr = np.zeros((num_timesteps, num_pts))
 
         print("Loading NN input vars...")
-        for i, var in enumerate(x_labels):
-            for j, ts in enumerate(t_labels):
-                file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
-                print(f'Loading file: {file_path}')
-                box = get_data_memmap(
-                    file_path,
-                    self.args.nx, self.args.ny, self.args.nz,
-                    self.args.nxsl, self.args.nysl, self.args.nzsl,
-                    self.args.nxoffset, self.args.nyoffset, self.args.nzoffset,
-                    self.args.nxskip, self.args.nyskip, self.args.nzskip,
-                    self.args.nbytes
-                )
-                X[j, :, i] = box.reshape(-1)
+        self._load_vars(
+            x_labels, t_labels, X,
+            lambda arr, j, i, data: arr.__setitem__((j, slice(None), i), data)
+        )
 
         print("Loading NN output vars...")
-        for i, var in enumerate(y_labels):
-            for j, ts in enumerate(t_labels):
-                file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
-                print(f'Loading file: {file_path}')
-                box = get_data_memmap(
-                    file_path,
-                    self.args.nx, self.args.ny, self.args.nz,
-                    self.args.nxsl, self.args.nysl, self.args.nzsl,
-                    self.args.nxoffset, self.args.nyoffset, self.args.nzoffset,
-                    self.args.nxskip, self.args.nyskip, self.args.nzskip,
-                    self.args.nbytes
-                )
-                Y[j, :, i] = box.reshape(-1)
+        self._load_vars(
+            y_labels, t_labels, Y,
+            lambda arr, j, i, data: arr.__setitem__((j, slice(None), i), data)
+        )
 
         print("Loading cluster vars...")
+        # Note: cv_arr is 2D per timestep so we don't index the third dimension.
         for i, var in enumerate(cv_labels):
             for j, ts in enumerate(t_labels):
-                file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
-                print(f'Loading file: {file_path}')
-                box = get_data_memmap(
-                    file_path,
-                    self.args.nx, self.args.ny, self.args.nz,
-                    self.args.nxsl, self.args.nysl, self.args.nzsl,
-                    self.args.nxoffset, self.args.nyoffset, self.args.nzoffset,
-                    self.args.nxskip, self.args.nyskip, self.args.nzskip,
-                    self.args.nbytes
-                )
-                cv_arr[j, :] = box.reshape(-1)
+                data = self._load_and_reshape(var, ts)
+                cv_arr[j, :] = data
 
         return X, Y, cv_arr
 

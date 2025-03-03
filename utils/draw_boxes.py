@@ -50,5 +50,6 @@ for pos in positions:
 # Set equal aspect ratio
 ax.set_box_aspect([1, 1, 1])
 
-plt.show()
+plt.savefig('box.png')
+#plt.show()
 
