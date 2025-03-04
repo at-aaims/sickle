@@ -154,6 +154,7 @@ if rank == 0:
             Yout[ts, :] = subsampled_Y
     
     # Reshape outputs to a spatial grid:
+    num_timesteps *= args.num_hypercubes
     if args.method == "full":
         Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[-1])
     if args.field_prediction_type == FieldPredictionType.FULL:

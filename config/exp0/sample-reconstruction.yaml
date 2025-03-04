@@ -13,9 +13,11 @@ shared:
   fileprefix: "{nxsl}x{nysl}x{nzsl}-ns{num_samples}-window{window}"
 
 subsample:
+  hypercubes: random
+  num_hypercubes: 1
   method: maxent # random or uips
   path: /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/P1F4R32_testing/raw_data/
-  num_samples: 100
+  num_samples: 1000
   num_clusters: 20
   nxsl: 32
   nysl: 32
@@ -23,7 +25,7 @@ subsample:
 
 train:
   epochs: 100
-  batch: 4
+  batch: 16
   patience: 100
   target: p_full
   window: 2

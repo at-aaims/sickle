@@ -180,8 +180,8 @@ def create_sequences(X, Y, args):
     """
     Create time sequences of a given window size (W) from the input arrays X and Y with specified overlap.
 
-    X: [T, [X,Y,Z]-or-NSAMPLES, C] -> [B, W, [X,Y,Z]-or-NSAMPLES, C]
-    Y: [T, [X,Y,Z]-or-NSAMPLES, C] -> [B, W, [X,Y,Z]-or-NSAMPLES, C]
+    X: [T * num_cubes, [X,Y,Z]-or-NSAMPLES, C] -> [B, W, [X,Y,Z]-or-NSAMPLES, C]
+    Y: [T * num_cubes, [X,Y,Z]-or-NSAMPLES, C] -> [B, W, [X,Y,Z]-or-NSAMPLES, C]
     W: window size
     B: number of sequences (or total batch)
     """
@@ -197,6 +197,11 @@ def create_sequences(X, Y, args):
     else:
         nt, nsamples, nvars_X = X.shape
 
+    try:
+        nt = int(nt / args.num_hypercubes)
+    except ZeroDivisionError:
+        raise ValueError("Invalid number of hypercubes; must be non-zero.")
+
     if field_prediction_type == FieldPredictionType.FULL:
         nx, ny, nz, nvars_Y = Y.shape[1:]
     else:
@@ -205,7 +210,9 @@ def create_sequences(X, Y, args):
     # Determine sequence info
     stride = window_size - overlap
     assert stride > 0, f"window_size ({window_size}) must be > overlap ({overlap})"
-    num_sequences = (nt - window_size) // stride + 1
+
+    num_seqs_per_cube = (nt - window_size) // stride + 1
+    num_sequences = num_seqs_per_cube * args.num_hypercubes
 
     # Initialize sequence arrays
     if args.method == "full":
@@ -225,9 +232,10 @@ def create_sequences(X, Y, args):
         raise Exception("Enter a valid `args.target`.")
 
     # Get and store sequence data
-    for i in range(num_sequences):
-        start_index = i * stride
-        X_sequences[i] = X[start_index:start_index + window_size].reshape(X_sequences.shape[1:])
-        Y_sequences[i] = Y[start_index:start_index + window_size].reshape(Y_sequences.shape[1:])
+    for j in range(args.num_hypercubes):
+        for i in range(num_seqs_per_cube):
+            start_index = (j * num_seqs_per_cube) + (i * stride)
+            X_sequences[i] = X[start_index:start_index + window_size].reshape(X_sequences.shape[1:])
+            Y_sequences[i] = Y[start_index:start_index + window_size].reshape(Y_sequences.shape[1:])
 
     return X_sequences, Y_sequences
