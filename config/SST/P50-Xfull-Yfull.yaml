@@ -2,21 +2,21 @@ shared:
   dims: 3
   dtype: sst-binary
   noseed: true
-  input_vars: [u, v, w, r]
-  output_vars: [p, pv]
-  cluster_var: [p, pv]
-  nx: 514
-  ny: 512
-  nz: 256
-  gravity: z
+  input_vars: [u, v, w]
+  output_vars: r
+  cluster_var: [u, v, w]
+  nx: 37634
+  ny: 4704
+  nz: 37632
+  gravity: y
   plot: true
-  fileprefix: "{nxsl}x{nysl}x{nzsl}-cubes{num_hypercubes}-ns{num_samples}-window{window}"
+  fileprefix: "SST-P50-cubes{num_hypercubes}-{nx}x{ny}x{nz}-ns{num_samples}-window{window}"
 
 subsample:
   hypercubes: random
   num_hypercubes: 7
   method: full # random or uips
-  path: /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/P1F4R32_testing/raw_data/
+  path: /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/PiF050Gn0050/
   num_samples: 1000
   num_clusters: 20
   nxsl: 32
@@ -28,6 +28,6 @@ train:
   batch: 16
   patience: 100
   target: p_full
-  window: 2
+  window: 1
   arch: CNN_transformer
   sequence: true

@@ -3,18 +3,20 @@ shared:
   dtype: sst-binary
   noseed: true
   input_vars: [u, v, w, r]
-  output_vars: [p]
-  cluster_var: pv
+  output_vars: [p, pv]
+  cluster_var: [p, pv]
   nx: 514
   ny: 512
   nz: 256
   gravity: z
   plot: true
-  fileprefix: "{nxsl}x{nysl}x{nzsl}-ns{num_samples}-window{window}"
+  fileprefix: "SST-P1-cubes{num_hypercubes}-{nx}x{ny}x{nz}-ns{num_samples}-window{window}"
 
 subsample:
-  method: maxent # random or uips
-  path: /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/
+  hypercubes: random
+  num_hypercubes: 1
+  method: maxent  # or random
+  path: /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/P1F4R32_testing/raw_data/
   num_samples: 100
   num_clusters: 20
   nxsl: 32
