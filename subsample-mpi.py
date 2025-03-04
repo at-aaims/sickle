@@ -1,4 +1,5 @@
 import numpy as np
+import time
 import os
 
 from mpi4py import MPI
@@ -40,12 +41,17 @@ def broadcast_large_array(data, comm, root=0):
     
     return data
 
+
 # Initialize MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()   # Rank of the current process
 size = comm.Get_size()   # Total number of processes
 
 print(f"Rank {rank} sees output_dir = {args.output_dir}", flush=True)
+
+# Synchronize before starting the timer.
+comm.Barrier()
+start_fileio = MPI.Wtime()
 
 if rank == 0:
     print(f"*** TOTAL NUMBER OF PROCESSES: {size} *************")
@@ -56,13 +62,12 @@ if rank == 0:
     X, Y, cv, x, y, z = load_data(args)
     args_to_broadcast = args
 else:
-    X = None
-    Y = None
-    cv = None
-    x = None
-    y = None
-    z = None
+    X = Y = cv = x = y = z = None
     args_to_broadcast = None
+
+# Synchronize again to ensure all processes wait for the I/O to complete.
+comm.Barrier()
+end_fileio = MPI.Wtime()
 
 # Broadcast large arrays with chunking
 X = broadcast_large_array(X, comm) if rank == 0 else broadcast_large_array(None, comm)
@@ -74,6 +79,7 @@ cv = broadcast_large_array(cv, comm) if rank == 0 else broadcast_large_array(Non
 args = comm.bcast(args_to_broadcast, root=0)
 
 comm.Barrier()  # Synchronize all processes
+start_sampling = MPI.Wtime()
 
 # Divide timesteps among processes
 local_timesteps = np.array_split(range(X.shape[0]), size)[rank]
@@ -96,7 +102,17 @@ for timestep in local_timesteps:
 # Gather results from all processes
 all_results = comm.gather(local_results, root=0)
 
+# Synchronize after sampling.
+comm.Barrier()
+end_sampling = MPI.Wtime()
+
+# Optionally, compute the maximum time among all processes.
+total_sampling_time = comm.reduce(end_sampling - start_sampling, op=MPI.MAX, root=0)
+
 if rank == 0:
+    print(f"TIMINGS: FILE LOAD: {end_fileio - start_fileio}s")
+    print(f"TIMINGS: SUBSAMPLING TIME: {total_sampling_time}s")
+
     # Root process aggregates results
     if not os.path.exists(args.output_dir):
         print(f"Output directory {args.output_dir} does not exist!", flush=True)

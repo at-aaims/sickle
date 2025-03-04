@@ -10,8 +10,8 @@
 
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
 mkdir -p $RUNDIR "$RUNDIR/snapshots" "$RUNDIR/plots"
-CASE=sample-reconstruction.yaml
-CASEPATH=config/exp0/$CASE
+CASE=P1-Xsample-Yfull.yaml
+CASEPATH=config/SST/$CASE
 
 cp $CASEPATH $RUNDIR
 cp slurm.sh $RUNDIR  # for reproducibility
