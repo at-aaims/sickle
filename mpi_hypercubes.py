@@ -6,6 +6,7 @@ srun -n 64 python -u mpi_hypercubes.py -ncl 20 -ncu 100
 
 from mpi4py import MPI
 import numpy as np
+from sklearn.datasets import make_blobs
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics.pairwise import pairwise_distances_argmin
 from scipy.stats import entropy
@@ -13,6 +14,8 @@ from collections import defaultdict
 import argparse
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+choices = ['blob', 'sst']
+parser.add_argument('-c', '--case', choices=choices, default='blob', help='Sample cases.')
 parser.add_argument('-p', '--path', type=str, default='/lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/pv_28.040000', help='File path to data.')
 parser.add_argument('-ncl', '--n_clusters', type=int, default=10, help='Number of clusters.')
 parser.add_argument('-ncu', '--n_cubes', type=int, default=100, help='Number of hypercubes to extract.')
@@ -34,6 +37,75 @@ else:
 # Broadcast the seed to all ranks so they use the same random state
 seed_value = comm.bcast(seed_value, root=0)
 np.random.seed(seed_value)  # Set the seed for NumPy
+
+def load_data_mpi_blobs(n_samples, n_features, n_clusters, cluster_std, space_dims, rank, size):
+    """
+    Generate synthetic blob data and distribute it across MPI ranks.
+
+    Parameters:
+        n_samples : int
+            Total number of data points to generate.
+        n_features : int
+            Number of features (dimensions) of the data.
+        n_clusters : int
+            Number of blob clusters.
+        cluster_std : float
+            Standard deviation of the blobs.
+        space_dims : tuple (nx, ny, nz)
+            The overall 3D space dimensions (for assigning coordinates).
+        rank : int
+            The MPI rank of the process.
+        size : int
+            Total number of MPI processes.
+
+    Returns:
+        local_data : np.ndarray, shape (N_local, n_features)
+            The local feature data for each rank.
+        local_coords : np.ndarray, shape (N_local, 3)
+            The corresponding 3D coordinates for each data point.
+    """
+    comm = MPI.COMM_WORLD
+
+    if rank == 0:
+        # Generate synthetic blob data (features + cluster centers)
+        features, _, cluster_centers = make_blobs(n_samples=n_samples, centers=n_clusters, 
+                                               n_features=n_features, cluster_std=cluster_std, 
+                                               random_state=seed_value, return_centers=True)
+        features = features.astype(np.float32)
+        cluster_centers = cluster_centers[np.lexsort(tuple(cluster_centers[:, i] for i in range(cluster_centers.shape[1]-1, -1, -1)))]
+        
+        # Generate corresponding random 3D coordinates within the given space dimensions
+        nx, ny, nz = space_dims
+        coords = np.random.rand(n_samples, 3) * np.array([nx, ny, nz])  # Random spatial positions
+
+        # Split data into `size` chunks along the first axis
+        np.random.shuffle(features)  # Shuffle before distributing
+        split_data = np.array_split(features, size, axis=0)
+        split_coords = np.array_split(coords, size, axis=0)
+    else:
+        split_data = None
+        split_coords = None
+        cluster_centers = None
+
+    # Scatter the data and coordinates across ranks
+    local_data = comm.scatter(split_data, root=0)
+    local_coords = comm.scatter(split_coords, root=0)
+    global_centers = comm.bcast(cluster_centers, root=0)
+
+    return local_data, local_coords, global_centers
+
+def validate_mpi_vs_normal(mpi_centers, normal_centers):
+    """
+    Compare cluster centers from MPI and normal k-means.
+    """
+    if mpi_centers is None:
+        return
+
+    # Compute mean Euclidean distance between corresponding cluster centers
+    diff = np.linalg.norm(mpi_centers - normal_centers, axis=1)
+    
+    print("Mean difference between centers:", np.mean(diff))
+    print("Max difference:", np.max(diff))
 
 def load_data_mpi(comm, loadpath, nx, ny, nz, rank, size, split_axis=0):
     """
@@ -195,11 +267,12 @@ def extract_local_subcube_totals(coords, data_node_strength, subcube_size):
         subcube_totals[cube_id] += strength
     return subcube_totals
 
-def mpi_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cubes, batch_size=10000, n_init=10, max_iter=100, n_iters=10):
+def mpi_hypercubes(case, loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cubes, batch_size=10000, n_init=10, max_iter=100, n_iters=10):
     """
     Parallel maxEnt hypercube selection using k-means clustering using MPI4PY + MiniBatchKMeans.
 
     Parameters:
+    - case: str, case type to test. "blob" and "sst"
     - loadpath: str, path to the binary file
     - nx, ny, nz: int, full data cube dimensions
     - n_clusters: int, number of clusters
@@ -220,9 +293,15 @@ def mpi_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cubes, 
         print(f"Total processors: {size}")
 
     # Load dataset slice for each MPI rank
-    local_data, local_coords = load_data_mpi(comm, loadpath, nx, ny, nz, rank, size)
-    # print(f"local_data (rank {rank}): {local_data.shape}")
-    # print(f"local_coords (rank {rank}): {local_coords.shape}")
+    if case == "blob":
+        # Define blob parameters
+        n_samples = 100000  # Total number of points
+        n_features = 4  # Number of feature dimensions
+        cluster_std = 0.6  # Spread of blobs
+        space_dims = (1000, 1000, 1000)  # 3D spatial domain
+        local_data, local_coords, cluster_centers_blob = load_data_mpi_blobs(n_samples, n_features, n_clusters, cluster_std, space_dims, rank, size)
+    if case == "sst":
+        local_data, local_coords = load_data_mpi(comm, loadpath, nx, ny, nz, rank, size)
 
     # Start timing for MPI K-Means
     mpi_start_time = MPI.Wtime()
@@ -268,10 +347,11 @@ def mpi_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cubes, 
     if rank == 0:
         print(f"Parallel (MPI) K-Means Time: {mpi_time:.4f} seconds")
         print(f"Centers: {cluster_centers}")
+        if case == "blob":
+            validate_mpi_vs_normal(cluster_centers, cluster_centers_blob)
 
     # 1. Compute local data labels
     local_labels = pairwise_distances_argmin(local_data, cluster_centers)
-    # print(f"local_labels (rank {rank}): {len(local_labels)}")
 
     # 2. Compute local histograms for each label
     bin_range = (comm.allreduce(np.min(local_data), op=MPI.MIN), comm.allreduce(np.max(local_data), op=MPI.MAX))
@@ -287,8 +367,6 @@ def mpi_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cubes, 
 
     # 3. Reduce local histograms to global histogram for all lables
     global_histograms = reduce_histograms(comm, local_histograms, n_clusters)
-    # if rank == 0:
-    #     print(f"global_histograms: {global_histograms}")
 
     # 4. On the root process, compute the probability distributions and node strength of each cluster.
     if rank == 0:
@@ -321,8 +399,7 @@ def mpi_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cubes, 
         for local_dict in all_local_subcubes:
             for cube_id, total in local_dict.items():
                 global_subcube_totals[cube_id] += total
-        # print(f"global_subcube_totals: {global_subcube_totals}")
-        
+       
         # 8. Rank subcubes based on total node strength and sample.
         subcube_ids = list(global_subcube_totals.keys())
         strengths = np.array([global_subcube_totals[cube_id] for cube_id in subcube_ids])
@@ -344,6 +421,7 @@ if __name__ == '__main__':
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
+    case = args.case
     loadpath = args.path
     nx, ny, nz = (args.nx, args.ny, args.nz)
     nxsl, nysl, nzsl = (args.nxsl, args.nysl, args.nzsl)
@@ -362,6 +440,6 @@ if __name__ == '__main__':
             print(f"Rank 0 encountered an error: {e}", flush=True)
             comm.Abort(1)  # Ensure all ranks exit immediately
 
-    cluster_centers, sampled_subcubes = mpi_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, 
+    cluster_centers, sampled_subcubes = mpi_hypercubes(case, loadpath, nx, ny, nz, nxsl, nysl, nzsl, 
                                                     n_clusters=n_clusters, n_cubes=n_cubes, 
                                                     batch_size=int(4096/size), n_init=20, max_iter=10, n_iters=10)
