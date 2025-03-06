@@ -1,5 +1,6 @@
 import numpy as np
 from helpers import check_data
+from .maxent_hypercubes import maxent_hypercubes
 
 def extract_hypercubes(loadpath, nbytes, file_shape, cube_shape, method, num_cubes):
     """
@@ -39,17 +40,11 @@ def extract_hypercubes(loadpath, nbytes, file_shape, cube_shape, method, num_cub
         if method == 'random':
             sel_indices = np.random.choice(len(indices), num_cubes, replace=False)
         elif method == 'maxent':
-            raise ValueError("maxent not yet implemented")
-            # For maximum entropy selection, you could compute the entropy of each cube.
-            # Here is a simple example using histogram-based entropy.
-            def cube_entropy(cube):
-                hist, _ = np.histogram(cube, bins=10, density=True)
-                hist = hist + 1e-12  # avoid log(0)
-                return -np.sum(hist * np.log(hist))
-            entropies = np.array([cube_entropy(cube) for cube in cubes])
-            # Select cubes with the highest entropy values.
-            sel_indices = np.argsort(entropies)[-num_cubes:]
-            cubes = cubes[sel_indices]
+            # raise ValueError("maxent not yet implemented")
+            sampled_subcubes = maxent_hypercubes(loadpath, nx, ny, nz, hx, hy, hz, 
+                                                n_clusters=10, n_cubes=num_cubes, 
+                                                batch_size=int(4096/size), n_init=20, max_iter=10, n_iters=10)
+            sel_indices = np.array([ix + num_x * (iy + num_y * iz) for (ix, iy, iz) in sampled_subcubes])
         else:
             raise ValueError("Unknown subsampling method: choose 'random' or 'maxent'.")
 
