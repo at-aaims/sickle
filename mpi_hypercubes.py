@@ -1,3 +1,9 @@
+"""
+Parallel maxEnt-based hypercube selection for SST data.
+Sample run script:
+srun -n 64 python -u mpi_hypercubes.py -ncl 20 -ncu 100
+"""
+
 from mpi4py import MPI
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
@@ -331,8 +337,8 @@ def mpi_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cubes, 
         sampled_subcubes = [subcube_ids[i] for i in sampled_indices]
         print("Sampled subcube IDs:", sampled_subcubes)
         return cluster_centers, sampled_subcubes
-    else:
-        return None
+    
+    return None, None
 
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD
