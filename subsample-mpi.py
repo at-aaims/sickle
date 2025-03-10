@@ -66,7 +66,7 @@ else:
     args_to_broadcast = None
 
 # Synchronize again to ensure all processes wait for the I/O to complete.
-comm.Barrier()
+#comm.Barrier()
 end_fileio = MPI.Wtime()
 
 # Broadcast large arrays with chunking

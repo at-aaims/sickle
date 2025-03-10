@@ -1,6 +1,7 @@
 import numpy as np
 from helpers import check_data
-from .maxent_hypercubes import maxent_hypercubes
+#from .maxent_hypercubes import maxent_hypercubes
+from .maxent_sequential import maxent_hypercubes
 
 def extract_hypercubes(loadpath, nbytes, file_shape, cube_shape, method, num_cubes):
     """
@@ -43,7 +44,10 @@ def extract_hypercubes(loadpath, nbytes, file_shape, cube_shape, method, num_cub
             # raise ValueError("maxent not yet implemented")
             sampled_subcubes = maxent_hypercubes(loadpath, nx, ny, nz, hx, hy, hz, 
                                                 n_clusters=10, n_cubes=num_cubes, 
-                                                batch_size=int(4096/size), n_init=20, max_iter=10, n_iters=10)
+                                                # note: keep 256 < batch_size < 1024 per core
+                                                # main issue: number of clusters
+                                                #batch_size=int(4096/size), n_init=20, max_iter=10, n_iters=10)
+                                                batch_size=1024, n_init=20, max_iter=10, n_iters=10)
             sel_indices = np.array([ix + num_x * (iy + num_y * iz) for (ix, iy, iz) in sampled_subcubes])
         else:
             raise ValueError("Unknown subsampling method: choose 'random' or 'maxent'.")

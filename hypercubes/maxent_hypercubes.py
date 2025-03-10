@@ -1,25 +1,67 @@
 """
 Parallel maxEnt-based hypercube selection for SST data.
 """
-from mpi4py import MPI
+#from mpi4py import MPI
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics.pairwise import pairwise_distances_argmin
 from scipy.stats import entropy
 from collections import defaultdict
 
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-if rank == 0:
-    seed_value = np.random.randint(0, 1000000)
-else:
-    seed_value = None
+#comm = MPI.COMM_WORLD
+#rank = comm.Get_rank()
+#if rank == 0:
+#    seed_value = np.random.randint(0, 1000000)
+#else:
+#    seed_value = None
 
 # Broadcast the seed to all ranks so they use the same random state
-seed_value = comm.bcast(seed_value, root=0)
-np.random.seed(seed_value)  # Set the seed for NumPy
+#seed_value = comm.bcast(seed_value, root=0)
+#np.random.seed(seed_value)  # Set the seed for NumPy
 
 def load_data_mpi(comm, loadpath, nx, ny, nz, rank, size, split_axis=0):
+    print(f"Entering load_data_mpi, rank {rank}", flush=True)
+    if rank == 0:
+        n_features = 1
+        nskip = 1
+        # Load full dataset on rank 0 (using memmap)
+        data_memmap = np.memmap(loadpath, dtype=np.float32, mode='r', shape=(nz, ny, nx))[::nskip, ::nskip, :-2:nskip]
+        # Create a coordinate grid that matches the shape of data_memmap.
+        coords = np.indices(data_memmap.shape).transpose(1, 2, 3, 0)
+        
+        # Split data and coordinates along the desired axis.
+        # Convert the splits to regular NumPy arrays (copy) to ensure they are picklable.
+        split_data = [np.array(part) for part in np.array_split(data_memmap, size, axis=split_axis)]
+        split_coords = [np.array(part) for part in np.array_split(coords, size, axis=split_axis)]
+    else:
+        split_data = None
+        split_coords = None
+        n_features = None
+
+    print(f"Rank {rank} about to call bcast for n_features", flush=True)
+    # Broadcast n_features so that all processes know its value.
+    n_features = comm.bcast(n_features, root=0)
+    print(f"Rank {rank} finished bcast for n_features, got: {n_features}", flush=True)
+    
+    # Debug print: confirm that all processes reached the scatter.
+    print(f"Rank {rank} reached scatter for data", flush=True)
+    
+    # Scatter the data slices from rank 0 to all processes.
+    local_data = comm.scatter(split_data, root=0).reshape(-1, n_features)
+    
+    # Debug print: confirm data scatter completed.
+    print(f"Rank {rank} completed scatter for data; local_data shape: {local_data.shape}", flush=True)
+    
+    # Scatter the coordinate slices.
+    local_coords = comm.scatter(split_coords, root=0).reshape(-1, 3)
+    
+    # Debug print: confirm coordinates scatter completed.
+    print(f"Rank {rank} completed scatter for coords; local_coords shape: {local_coords.shape}", flush=True)
+
+    return local_data, local_coords
+
+
+def load_data_mpi2(comm, loadpath, nx, ny, nz, rank, size, split_axis=0):
     """
     Load a portion of the dataset for each MPI rank using memmap.
     Distribute data across ranks using MPI Scatter.
@@ -78,6 +120,7 @@ def mpi_kmeans(local_data, n_clusters, batch_size=10000, n_init=10, max_iter=100
     Returns:
     - Cluster centers from root process.
     """
+    from mpi4py import MPI
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -252,14 +295,21 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
     """
 
     # Initialize MPI
+    from mpi4py import MPI
+    print("a href", flush=True)
     comm = MPI.COMM_WORLD
+    print("b href", flush=True)
     rank = comm.Get_rank()  # Process rank
+    print("c href", flush=True)
     size = comm.Get_size()  # Total processes
+    print("d href", flush=True)
     if rank == 0:
         print(f"Total processors: {size}")
+    print("e href", flush=True)
 
     # Load dataset slice for each MPI rank
     local_data, local_coords = load_data_mpi(comm, loadpath, nx, ny, nz, rank, size)
+    print("f href", flush=True)
 
     # Start timing for MPI K-Means
     mpi_start_time = MPI.Wtime()
@@ -267,6 +317,7 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
     # 0. Parallel k-means using MiniBatchKMeans
     cluster_centers = mpi_kmeans(local_data, n_clusters=n_clusters, batch_size=int(4096/size), n_init=20, max_iter=10, n_iters=10)
     cluster_centers = cluster_centers[np.lexsort(tuple(cluster_centers[:, i] for i in range(cluster_centers.shape[1]-1, -1, -1)))]
+    print("g href", flush=True)
 
     # Stop timing
     mpi_end_time = MPI.Wtime()
@@ -338,7 +389,9 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
 
         sampled_indices = np.random.choice(len(subcube_ids), size=n_cubes, replace=False, p=probabilities)
         sampled_subcubes = [subcube_ids[i] for i in sampled_indices]
-        print("Sampled subcube IDs:", sampled_subcubes)
-        return sampled_subcubes
-    
-    return None
+    else:
+        sampled_subcubes = None
+
+    print("Sampled subcube IDs:", sampled_subcubes)
+    sampled_subcubes = comm.bcast(sampled_subcubes, root=0)
+    return sampled_subcubes
