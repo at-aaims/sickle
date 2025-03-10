@@ -155,7 +155,8 @@ if rank == 0:
             ts = timestep + sub_timestep
             if ts >= num_timesteps:
                 continue  # Skip if we exceed available timesteps.
-            print(Xout.shape, X.shape)
+            print(Xout.shape, X.shape, indices.shape)
+            print(indices)
             if args.method == "full":
                 Xout[ts] = X[ts]
             else:

@@ -15,7 +15,8 @@ class MaxentSubsampler(Subsampler):
 
     def sample(self, num_samples, timestep):
         # Use cv for clustering instead of self.data.
-        data = self.cv[timestep, :].reshape(-1, 1)
+        num_cvs = len(self.args.cluster_var)
+        data = self.cv[timestep, :].reshape(-1, num_cvs)
         num_clusters = self.args.num_clusters
         
         # Perform k-means clustering.

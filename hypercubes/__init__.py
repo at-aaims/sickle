@@ -48,13 +48,16 @@ def extract_hypercubes(loadpath, nbytes, file_shape, cube_shape, method, num_cub
                                                 # main issue: number of clusters
                                                 #batch_size=int(4096/size), n_init=20, max_iter=10, n_iters=10)
                                                 batch_size=1024, n_init=20, max_iter=10, n_iters=10)
+            # Convert 3D to 1D
             sel_indices = np.array([ix + num_x * (iy + num_y * iz) for (ix, iy, iz) in sampled_subcubes])
+            #print("**", sampled_subcubes)
         else:
             raise ValueError("Unknown subsampling method: choose 'random' or 'maxent'.")
 
     cubes = []
     for i  in range(len(sel_indices)):
         ix, iy, iz = indices[sel_indices[i]]
+        #print("***", ix, iy, iz)
         x0, y0, z0 = ix * hx, iy * hy, iz * hz
         cube = data_memmap[z0:z0+hz, y0:y0+hy, x0:x0+hx]
         cubes.append(cube.copy().transpose(2, 1, 0)) # transposing data to be [x, y, z]
