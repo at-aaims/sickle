@@ -32,7 +32,7 @@ def load_data_seq(loadpaths, nx, ny, nz, nskip=1):
     data_list = []
     for path in loadpaths:
         # Load data as a memmap; apply slicing to mimic your original code.
-        single_data = np.memmap(path, dtype=np.float32, mode='r', shape=(nz, ny, nx))[::nskip, ::nskip, :-2:nskip]
+        data = np.memmap(path, dtype=np.float32, mode='r', shape=(nz, ny, nx))[::nskip, ::nskip, :-2:nskip]
         # Transpose data to reorder dimensions (now shape becomes (nx, ny, nz))
         data = data.transpose(2, 1, 0)
         data_list.append(data)
@@ -42,7 +42,7 @@ def load_data_seq(loadpaths, nx, ny, nz, nskip=1):
 
     # Create a coordinate grid based on the shape of one of the loaded datasets.
     # np.indices returns an array of shape (3, nx, ny, nz); transposing it produces (nz, ny, nx, 3)
-    coords = np.indices(data_list[0].shape).transpose(3, 2, 1, 0)
+    coords = np.indices(data_list[0].shape).transpose(1, 2, 3, 0)
     return data_4d, coords
 
 def sequential_kmeans(data, n_clusters, batch_size, n_init, max_iter, n_iters, seed_value=0):
