@@ -11,8 +11,8 @@
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
 mkdir -p $RUNDIR "$RUNDIR/snapshots" "$RUNDIR/plots"
 #CASE=P1-Xsample-Yfull.yaml
-CASE=P1-Xsample-Yfull-Hrandom.yaml
-#CASE=P1-Xsample-Yfull-Hmaxent.yaml
+#CASE=P1-Xsample-Yfull-Hrandom.yaml
+CASE=P1-Xsample-Yfull-Hmaxent.yaml
 #CASE=P1-Xfull-Yfull-Huniform.yaml
 #CASE=P1-Xfull-Yfull-Hrandom.yaml
 #CASE=P1-Xfull-Yfull-Hmaxent.yaml
@@ -31,9 +31,8 @@ source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
 # Take energy snapshot
 srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python -u $SRC/energy.py snapshot start
 
-time srun -N $SLURM_NNODES -n56 python -u $SRC/subsample-mpi.py \
-                           --output_dir $RUNDIR/snapshots \
-                           $CASE >& $RUNDIR/subsample.out
+time srun -N $SLURM_NNODES -n56 python -u $SRC/subsample-mpi.py $CASE \
+                           --output_dir $RUNDIR/snapshots >& $RUNDIR/subsample.out
 
 ### START ENERGY BENCHMARKING
 
