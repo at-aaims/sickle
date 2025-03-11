@@ -11,7 +11,7 @@ from sklearn.metrics.pairwise import pairwise_distances_argmin
 from scipy.stats import entropy
 from collections import defaultdict
 
-def load_data_seq(loadpath, nx, ny, nz, nskip=1):
+def load_data_seq(loadpaths, nx, ny, nz, nskip=1):
     """
     Load the full dataset using a memmap and create a coordinate grid.
     
@@ -29,12 +29,21 @@ def load_data_seq(loadpath, nx, ny, nz, nskip=1):
         coords : np.ndarray
             Coordinate grid of shape (nz, ny, nx, 3).
     """
-    # Load data as a memmap; note the slicing to mimic your original code.
-    data = np.memmap(loadpath, dtype=np.float32, mode='r', shape=(nz, ny, nx))[::nskip, ::nskip, :-2:nskip]
-    data.transpose(2, 1, 0)
-    # Create a coordinate grid: shape will be (nx, ny, nz, 3)
-    coords = np.indices(data.shape).transpose(3, 2, 1, 0)
-    return data, coords
+    data_list = []
+    for path in loadpaths:
+        # Load data as a memmap; apply slicing to mimic your original code.
+        single_data = np.memmap(path, dtype=np.float32, mode='r', shape=(nz, ny, nx))[::nskip, ::nskip, :-2:nskip]
+        # Transpose data to reorder dimensions (now shape becomes (nx, ny, nz))
+        data = data.transpose(2, 1, 0)
+        data_list.append(data)
+
+    # Stack the 3D arrays along a new axis (the 4th dimension)
+    data_4d = np.stack(data_list, axis=-1)
+
+    # Create a coordinate grid based on the shape of one of the loaded datasets.
+    # np.indices returns an array of shape (3, nx, ny, nz); transposing it produces (nz, ny, nx, 3)
+    coords = np.indices(data_list[0].shape).transpose(3, 2, 1, 0)
+    return data_4d, coords
 
 def sequential_kmeans(data, n_clusters, batch_size, n_init, max_iter, n_iters, seed_value=0):
     """
@@ -174,7 +183,7 @@ def extract_local_subcube_totals(coords, data_node_strength, subcube_size):
     return subcube_totals
 
 
-def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cubes,
+def maxent_hypercubes(loadpaths, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cubes,
                       batch_size=10000, n_init=10, max_iter=100, n_iters=10, seed_value=0):
     """
     Sequential maxEnt hypercube selection.
@@ -202,10 +211,10 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
             List of selected hypercube IDs.
     """
     print("1. Load full dataset and coordinate grid", flush=True)
-    data, coords = load_data_seq(loadpath, nx, ny, nz)
+    data, coords = load_data_seq(loadpaths, nx, ny, nz)
     
-    # Flatten the data for clustering; assume 1 feature per point
-    n_features = 1
+    # Flatten the data for clustering
+    n_features = len(loadpaths)
     flat_data = data.reshape(-1, n_features)
     
     print("2. Run sequential MiniBatchKMeans clustering on the entire dataset", flush=True)

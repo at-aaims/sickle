@@ -4,7 +4,7 @@ import numpy as np
 import re
 from dataloaders import DataLoader
 from helpers import get_1Dgrid, get_data_memmap
-from hypercubes import extract_hypercubes
+from hypercubes import extract_hypercubes, extract_hypercube_IDs
 
 class DataLoaderSSTBinary(DataLoader):
 
@@ -55,6 +55,44 @@ class DataLoaderSSTBinary(DataLoader):
 
         return data.reshape(-1)
 
+    def _get_hypercube_IDs(self, cv_vars, ts):
+        """
+        Identifies hypercube IDs to sample using cluster vars.
+        """
+        dims_full = (self.args.nx, self.args.ny, self.args.nz)
+        dims_sl = (self.args.nxsl, self.args.nysl, self.args.nzsl)
+
+        # file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
+        file_paths = [os.path.join(self.path, f'{v}_{ts:0.6f}') for v in cv_vars]
+        print(f'Finding hypercubes for timestep {ts:0.6f} using vars: {cv_vars}')
+
+        hypercubeIDs = extract_hypercube_IDs(file_paths, self.args.nbytes, dims_full, dims_sl, \
+                                  self.args.hypercubes, self.args.num_hypercubes)
+
+        return hypercubeIDs#, cv_arr
+    
+    def _load_and_process_hypercubes(self, var, ts, hypercubeIDs):
+        """
+        Loads a variable file at a given timestep and reshapes it.
+        It uses certain hypercube based on thier IDs, identified 
+        using hypercubes sampling.
+        """
+        file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
+        print(f'Loading file using hypercube IDs: {file_path}')
+        check_data(file_path, nx, ny, nz, self.args.nbytes)
+        data_memmap = np.memmap(file_path, dtype=np.float32, mode='r', shape=(self.args.nz, self.args.ny, self.args.nx)) # NOTE: data is stored [z, y, x]
+        
+        cubes = []
+        for ix, iy, iz  in enumerate(hypercubeIDs):
+            x0, y0, z0 = ix * self.args.nxsl, iy * self.args.nysl, iz * self.args.nzsl
+            cube = data_memmap[z0:z0+self.args.nzsl, y0:y0+self.args.nysl, x0:x0+self.args.nxsl]
+            cubes.append(cube.copy().transpose(2, 1, 0)) # transposing data to be [x, y, z]
+        cubes = np.array(cubes)
+        data_memmap._mmap.close()
+        del data_memmap, cube
+
+        return cubes.reshape(-1)
+
     def load_multiple_timesteps(self, write_interval, num_timesteps, target, cv, file_filter='*_*'):
         self.path = os.path.dirname(self.path)
         file_names = glob.glob(os.path.join(self.path, file_filter))
@@ -89,20 +127,35 @@ class DataLoaderSSTBinary(DataLoader):
         Y = np.zeros((num_timesteps, num_points, len(y_labels)))
         cv_arr = np.zeros((num_timesteps, num_points, len(cv_labels)))
 
-        print("Loading NN input vars...")
-        for i, var in enumerate(x_labels):
-            for j, ts in enumerate(t_labels):
-                X[j, :, i] = self._load_and_process(var, ts)
+        for j, ts in enumerate(t_labels):
+            """
+            TODO:
+            This for loop is embarrassingly parallel.
+            Same as subsampling for loop.
+            """
+            hypercubeIDs = self._get_hypercube_IDs(cv_labels, ts)
+            for i, var in enumerate(cv_labels):
+                cv_arr[j, :, i] = self._load_and_process_hypercubes(var, ts, hypercubeIDs) #cv_arrs[:, i]
+            for i, var in enumerate(x_labels):
+                X[j, :, i] = self._load_and_process_hypercubes(var, ts, hypercubeIDs)
+            for i, var in enumerate(y_labels):
+                Y[j, :, i] = self._load_and_process_hypercubes(var, ts, hypercubeIDs)
+            
 
-        print("Loading NN output vars...")
-        for i, var in enumerate(y_labels):
-            for j, ts in enumerate(t_labels):
-                Y[j, :, i] = self._load_and_process(var, ts)
+        # print("Loading NN input vars...")
+        # for i, var in enumerate(x_labels):
+        #     for j, ts in enumerate(t_labels):
+        #         X[j, :, i] = self._load_and_process(var, ts)
 
-        print("Loading cluster vars...")
-        for i, var in enumerate(cv_labels):
-            for j, ts in enumerate(t_labels):
-                cv_arr[j, :, i] = self._load_and_process(var, ts)
+        # print("Loading NN output vars...")
+        # for i, var in enumerate(y_labels):
+        #     for j, ts in enumerate(t_labels):
+        #         Y[j, :, i] = self._load_and_process(var, ts)
+
+        # print("Loading cluster vars...")
+        # for i, var in enumerate(cv_labels):
+        #     for j, ts in enumerate(t_labels):
+        #         cv_arr[j, :, i] = self._load_and_process(var, ts)
 
         return X, Y, cv_arr
 
