@@ -14,24 +14,35 @@ def load_config(file_path):
 # Add the YAML file argument
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("config_file", nargs="?", default=None, help="Path to the YAML configuration file. If not provided, default parameters will be used.")
-archs = ['fcn', 'fcn_sst', 'lstm', 'transformer', 'MLP_transformer', 'CNN_transformer']
+
+# Hypercube selection method
+choices = ["uniform", "maxent", "random"]
+parser.add_argument("--hypercubes", default=choices[0], choices=choices, help="Extract a number of hypercubes")
+parser.add_argument("--num_hypercubes", type=int, default=1, help="Number of hypercubes to extract")
+
+# Subsampling method within hypercube
 choices = ['maxent', 'random', 'full', 'uips', 'lhs', 'stratified']
-parser.add_argument('-m', '--method', choices=choices, default='maxent', help='subsample method')
-parser.add_argument('--arch', type=str, default='fcn_sst', choices=archs, help='Type of neural network architecture')
-parser.add_argument('--bins', type=int, default=100, help='Number of bins to represent PDFs')
-parser.add_argument('-b', '--batch', type=int, default=32, help='batch size')
+parser.add_argument('-m', '--method', choices=choices, default='maxent', help='subsample method (no subsampling = "full")')
+
 choices = ['p', 'pv', 'wz', 'pwz', 'r', 'u', 'v', 'w']
 parser.add_argument('-cv', '--cluster_var', nargs="+", type=str, default='pv', choices=choices, help='cluster variable')
 parser.add_argument('--cutoff', type=float, default=0.5, help='optimal data cutoff factor, e.g., 0.1 keep top ten percent')
 parser.add_argument('--dims', type=int, default=2, choices=[2, 3], help='dataset dimensionality, 2 or 3 dimensions')
+
+# Shared params
 parser.add_argument('--fileprefix', type=str, default="method={method}", help="File prefix for various files")
+parser.add_argument('-o', '--output', action='store_true', default=False, help='output optional files')
+
+# NN Training
+archs = ['fcn', 'fcn_sst', 'lstm', 'transformer', 'MLP_transformer', 'CNN_transformer']
+parser.add_argument('--arch', type=str, default='fcn_sst', choices=archs, help='Type of neural network architecture')
+parser.add_argument('--bins', type=int, default=100, help='Number of bins to represent PDFs')
+parser.add_argument('-b', '--batch', type=int, default=32, help='batch size')
 parser.add_argument('-e', '--epochs', type=int, default=5, help='number of epochs')
 parser.add_argument('--hybrid', type=float, default=1, help='hybrid maxent+random sampling approach')
-parser.add_argument('--nbytes', type=int, default=4, help='how many bytes used for each number')
 parser.add_argument('-nn', '--knn', type=int, default=0, help='use knn to include neighbars')
 parser.add_argument('-nc', '--num_clusters', type=int, default=10, help='number of clusters')
 parser.add_argument('-ns', '--num_samples', type=int, default=100, help='number of subsamples')
-parser.add_argument('-o', '--output', action='store_true', default=False, help='output optional files')
 parser.add_argument('--num_timesteps', type=int, default=100, help='OpenFOAM number of timestamps')
 parser.add_argument('--path', type=str, default='./data', help='path to data')
 parser.add_argument('--patience', type=int, default=5, help='number epochs for early stopping')
@@ -56,6 +67,7 @@ parser.add_argument("--mxp_mode", default="none", choices=["none", "amp"], help=
 parser.add_argument("--precision", default="fp32", help="Precision to be used in case mxp_mode is enabled")
 
 # SST data args
+parser.add_argument('--nbytes', type=int, default=4, help='how many bytes used for each number')
 parser.add_argument("--nx", type=int, default=512+2, required=False, help="number of grid points in x dir for full data")
 parser.add_argument("--ny", type=int, default=512, required=False, help="number of grid points in y dir for full data")
 parser.add_argument("--nz", type=int, default=256, required=False, help="number of grid points in z dir for full data")
@@ -117,8 +129,11 @@ if args.arch == 'lstm' and (args.overlap > args.window - 1 or args.overlap < 0):
     raise ValueError(f"Invalid arguments: overlap ({args.overlap}) must be >= 0 and <= window - 1 ({args.window - 1})")
 
 # Convert cluster_var & output_vars to a list if it's a string in the YAML config
-if isinstance(args.output_vars, str): args.output_vars = [args.output_vars]
-if isinstance(args.cluster_var, str): args.cluster_var = [args.cluster_var]
+if isinstance(args.output_vars, str): 
+    args.output_vars = [args.output_vars]
+
+if isinstance(args.cluster_var, str): 
+    args.cluster_var = [args.cluster_var]
 
 # After args have been fully processed, format fileprefix using all argparse values
 if hasattr(args, "fileprefix") and isinstance(args.fileprefix, str):

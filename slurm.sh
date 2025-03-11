@@ -4,14 +4,20 @@
 #SBATCH -p batch  # partition
 ##SBATCH -q debug
 #SBATCH -N 1
-#SBATCH -t 01:00:00
+#SBATCH -t 02:00:00
 #SBATCH -o /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
 #SBATCH -e /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.err
 
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
 mkdir -p $RUNDIR "$RUNDIR/snapshots" "$RUNDIR/plots"
-CASE=sample-reconstruction.yaml
-CASEPATH=config/exp0/$CASE
+#CASE=P1-Xsample-Yfull.yaml
+#CASE=P1-Xsample-Yfull-Hrandom.yaml
+CASE=P1-Xsample-Yfull-Hmaxent.yaml
+#CASE=P1-Xfull-Yfull-Huniform.yaml
+#CASE=P1-Xfull-Yfull-Hrandom.yaml
+#CASE=P1-Xfull-Yfull-Hmaxent.yaml
+
+CASEPATH=config/SST/$CASE
 
 cp $CASEPATH $RUNDIR
 cp slurm.sh $RUNDIR  # for reproducibility
@@ -20,18 +26,13 @@ cd $RUNDIR
 SRC=/lustre/orion/proj-shared/gen150/dsml/sickle
 
 ### SUBSAMPLING 
-module purge
-source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
-module load PrgEnv-cray-amd
+source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
 
 # Take energy snapshot
 srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python -u $SRC/energy.py snapshot start
 
-time srun -N $SLURM_NNODES -n4 python -u $SRC/subsample-mpi.py \
-                           --output_dir $RUNDIR/snapshots \
-                           --timesteps 15 15.2 15.4 15.6 15.8 \
-                           --viz \
-                           $CASE >& $RUNDIR/subsample.out
+time srun -N $SLURM_NNODES -n56 python -u $SRC/subsample-mpi.py $CASE \
+                           --output_dir $RUNDIR/snapshots >& $RUNDIR/subsample.out
 
 ### START ENERGY BENCHMARKING
 
@@ -55,7 +56,6 @@ mkdir -p ${MIOPEN_USER_DB_PATH}
 
 echo "World Size: $WORLD_SIZE, Node Rank: $NODE_RANK, Master Addr: $MASTER_ADDR, Master Port: $MASTER_PORT"
 
-source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
 module load rocm/6.3.1 libfabric/1.22.0
 
 time srun -N $SLURM_NNODES --ntasks-per-node=8 python -u $SRC/train.py --plot \
