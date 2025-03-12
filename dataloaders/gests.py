@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import glob
+import time
 from dataloaders import DataLoader
 
 
@@ -31,25 +32,25 @@ class GESTDataLoader(DataLoader):
 
     def _read_binary_cube(self, filename, has_vector=False):
         """Read a binary cube file using memory mapping for large files and extract a subcube."""
+        dtype = np.float32  # Assuming 32-bit floating point precision
         shape = (3, *self.grid_size) if has_vector else self.grid_size  # Use full grid size
 
         if self.verbose:
             print(f"Memory-mapping file: {filename} with expected shape: {shape}")
 
-        data = np.memmap(filename, dtype=np.float32, mode='r', shape=shape, order='F')
+        start_time = time.time()
+        data = np.memmap(filename, dtype=dtype, mode='r', shape=shape, order='F')
+        print(f"Loaded file {filename}")
 
         # Extract subcube region
         x0, y0, z0 = self.subcube_origin
         x1, y1, z1 = x0 + self.subcube_size[0], y0 + self.subcube_size[1], z0 + self.subcube_size[2]
         subcube = data[:, x0:x1, y0:y1, z0:z1] if has_vector else data[x0:x1, y0:y1, z0:z1]
-
+        
         if self.verbose:
             print(f"Extracted sub-region shape: {subcube.shape}")
 
-        if has_vector:
-            return subcube.reshape(3, -1).T  # Shape (num_pts, 3) for velocity
-        else:
-            return subcube.reshape(-1)  # Shape (num_pts,)
+        return subcube.reshape(3, -1).T if has_vector else subcube.reshape(-1)
 
     def load_xyz(self):
         """Generate 1D x, y, z coordinate arrays instead of full 3D grids."""
@@ -74,6 +75,9 @@ class GESTDataLoader(DataLoader):
         t_labels = self._extract_times(file_names)
         print('Available timesteps (t_labels):', t_labels)
 
+        # Ensure num_timesteps does not exceed available timesteps
+        num_timesteps = min(num_timesteps, len(t_labels))
+
         num_points = self.num_pts  # Adjusted to match the subcube size
         X = np.zeros((num_timesteps, num_points, len(x_labels) + 2))  # Extra space for velocity components
         Y = np.zeros((num_timesteps, num_points, len(y_labels)))
@@ -82,10 +86,12 @@ class GESTDataLoader(DataLoader):
         for j, ts in enumerate(t_labels[:num_timesteps]):
             for i, var in enumerate(cv_labels):
                 var_prefix = self.varmap.get(var, var)
+                start_time = time.time()
                 cv_arr[j, :, i] = self._read_binary_cube(f"{self.path}/{var}/cube_{var_prefix}.{ts}", has_vector=False)
 
             for i, var in enumerate(x_labels):
                 var_prefix = self.varmap.get(var, var)
+                start_time = time.time()
                 subcube = self._read_binary_cube(f"{self.path}/{var}/cube_{var_prefix}.{ts}", has_vector=(var == 'velocity'))
                 
                 if var == 'velocity':
@@ -95,6 +101,7 @@ class GESTDataLoader(DataLoader):
 
             for i, var in enumerate(y_labels):
                 var_prefix = self.varmap.get(var, var)
+                start_time = time.time()
                 Y[j, :, i] = self._read_binary_cube(f"{self.path}/{var}/cube_{var_prefix}.{ts}", has_vector=False)
 
         return X, Y, cv_arr
