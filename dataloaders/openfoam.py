@@ -10,6 +10,9 @@ except ImportError:
 
 class DataLoaderOF(DataLoader):
 
+    def __init__(self, args):
+        super().__init__(args.path, args.dims, args.verbose)
+
     def load_forces(self, write_interval=100):
         forces = readforce(self.path, time_name='0', name='forces')
         # Drag force is composed of both a viscous and pressure components

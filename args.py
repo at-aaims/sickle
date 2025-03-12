@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import yaml
 
 from constants import FieldPredictionType
@@ -52,7 +53,7 @@ choices = ['StandardScaler', 'MinMaxScaler', 'PowerTransformer', 'None']
 parser.add_argument('--xscaler', type=str, default='MinMaxScaler', choices=choices, help='scaler function')
 parser.add_argument('--yscaler', type=str, default='StandardScaler', choices=choices, help='scaler function')
 parser.add_argument('--yscalefactor', type=float, default=3, help='scalefactor to divide target by before training')
-parser.add_argument('--dtype', type=str, default='openfoam', choices=['openfoam', 'csv', 'npz', 'sst-binary'], help='data type')
+parser.add_argument('--dtype', type=str, default='openfoam', choices=['openfoam', 'csv', 'npz', 'sst-binary', 'gests'], help='data type')
 parser.add_argument('--test_frac', type=float, default=0.1, help='fraction of data to hold out for testing')
 parser.add_argument('--target', type=str, default='wz', choices=['drag', 'p', 'p_full', 'wz', 'tke'], help='training target')
 parser.add_argument('--timesteps', nargs='+', type=float, default=None, help='Specific timesteps to load (e.g., --timesteps 28.04 29.24)')
@@ -66,7 +67,7 @@ parser.add_argument('--viz', action='store_true', default=False, help='Output .p
 parser.add_argument("--mxp_mode", default="none", choices=["none", "amp"], help="Specify how to use mixed precision for training and inference")
 parser.add_argument("--precision", default="fp32", help="Precision to be used in case mxp_mode is enabled")
 
-# SST data args
+# SST/GESTS data args
 parser.add_argument('--nbytes', type=int, default=4, help='how many bytes used for each number')
 parser.add_argument("--nx", type=int, default=512+2, required=False, help="number of grid points in x dir for full data")
 parser.add_argument("--ny", type=int, default=512, required=False, help="number of grid points in y dir for full data")
@@ -91,6 +92,11 @@ parser.add_argument("--saveData", default=False, action='store_true', help="Save
 
 # Parse command-line arguments
 args = parser.parse_args()
+
+# Explicitly check if the file exists
+if args.config_file and not os.path.isfile(args.config_file):
+    print(f"Error: Configuration file '{args.config_file}' not found.", file=sys.stderr)
+    sys.exit(1)
 
 # Load the YAML config if specified
 if args.config_file:

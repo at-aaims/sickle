@@ -6,7 +6,7 @@ from dataloaders import DataLoader
 
 class DataLoaderNPZ(DataLoader):
 
-    def __init__(self, path, verbose=False, prefix='cylinder_t', zwidth=4, dims=2):
+    def __init__(self, args, verbose=False, prefix='cylinder_t', zwidth=4, dims=2):
         super().__init__(path, dims, verbose)
     
     def _extract_times(self, file_names):
