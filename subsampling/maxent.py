@@ -4,14 +4,15 @@ from sklearn.cluster import KMeans
 import scipy.stats
 import pandas as pd
 from .base import Subsampler
-from plotting import plot_adjacency_matrix
+from plotting import plot_adjacency_matrix, plot_kmeans, plot_prob_dists, plot_cluster_histogram
 
 class MaxentSubsampler(Subsampler):
-    def __init__(self, data, args, cv=None):
+    def __init__(self, data, args, coords, cv=None):
         super().__init__(data, args)
         if cv is None:
             raise ValueError("MaxentSubsampler requires a cv array")
         self.cv = cv
+        self.coords = coords
 
     def sample(self, num_samples, timestep):
         # Use cv for clustering instead of self.data.
@@ -36,7 +37,54 @@ class MaxentSubsampler(Subsampler):
         
         # Randomly sample indices based on the computed probabilities.
         indices = np.random.choice(data.shape[0], num_samples, replace=False, p=probs)
+
+        # Generate additional plots if enabled.
+        if self.args.plot:
+            self.generate_plots(data, labels, clusters, indices, timestep, num_samples)
+
         return np.array(indices)
+
+    def generate_plots(self, data, labels, clusters, maxent_indices, timestep, num_samples):
+        """
+        Generate plots for KMeans clustering, cluster histogram, and
+        probability distributions comparing the full dataset, random sampling,
+        and MaxEnt sampling.
+
+        Parameters:
+          data           : The cv data at the given timestep.
+          labels         : KMeans cluster labels.
+          clusters       : List of cluster arrays.
+          maxent_indices : Indices chosen via MaxEnt sampling.
+          timestep       : Current timestep (for filenames).
+          num_samples    : Number of samples requested.
+        """
+        # Plot KMeans clustering if coordinate data are available.
+        if self.coords is not None:
+            x, y, z = self.coords
+            plot_kmeans(x, y, z, labels, timestep, self.args.plot_dir, self.args.cluster_var)
+        else:
+            print("Coordinates (x, y, z) not provided; skipping kmeans plot.")
+
+        # Plot the cluster histogram.
+        plot_cluster_histogram(labels, self.args.num_clusters, timestep, self.args.plot_dir)
+
+        # Compute probability distributions for comparison:
+        num_bins = 50
+        bin_range = (min([np.min(cluster) for cluster in clusters]),
+                     max([np.max(cluster) for cluster in clusters]))
+        # Global probability distribution from the entire cv data at this timestep.
+        global_counts, bin_edges = np.histogram(data, bins=num_bins, range=bin_range, density=False)
+        global_prob_dist = global_counts / np.sum(global_counts)
+        # Random sampling: select random indices and compute histogram.
+        rand_indices = np.random.choice(data.shape[0], num_samples, replace=False)
+        rand_counts, _ = np.histogram(data[rand_indices], bins=num_bins, range=bin_range, density=False)
+        random_prob_dist = rand_counts / np.sum(rand_counts)
+        # MaxEnt sampling probability distribution from the selected indices.
+        maxent_counts, _ = np.histogram(data[maxent_indices], bins=num_bins, range=bin_range, density=False)
+        maxent_prob_dist = maxent_counts / np.sum(maxent_counts)
+        # Plot the probability distributions.
+        plot_prob_dists(bin_edges, global_prob_dist, random_prob_dist, maxent_prob_dist,
+                        timestep, self.args.plot_dir, self.args.cluster_var)
 
     def perform_kmeans(self, data, num_clusters):
         kmeans = KMeans(n_clusters=num_clusters, random_state=0)
