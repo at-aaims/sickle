@@ -5,7 +5,7 @@ import time
 from dataloaders import DataLoader
 
 
-class GESTDataLoader(DataLoader):
+class GESTSDataLoader(DataLoader):
 
     def __init__(self, args):
         super().__init__(args.path, dims=args.dims)
@@ -106,11 +106,11 @@ class GESTDataLoader(DataLoader):
 
         return X, Y, cv_arr
 
-DataLoader = GESTDataLoader
+DataLoader = GESTSDataLoader
 
 if __name__ == "__main__":
     dataset_path = "/lustre/orion/tur120/world-shared/daludot/phy_cube_data"
-    loader = GESTDataLoader(dataset_path, verbose=True)
+    loader = GESTSDataLoader(dataset_path, verbose=True)
     x, y, z = loader.load_xyz()
     print(f"Loaded coordinate arrays: x({len(x)}), y({len(y)}), z({len(z)})")
 

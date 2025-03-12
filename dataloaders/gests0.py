@@ -2,7 +2,7 @@ import os
 import numpy as np
 import glob
 
-class GESTDataLoader:
+class GESTSDataLoader:
     def __init__(self, base_path, grid_size=(2048, 2048, 2048), chunk_size=(1024, 1024, 1024), verbose=False):
         self.base_path = base_path
         self.grid_size = grid_size
@@ -81,7 +81,7 @@ class GESTDataLoader:
 
 if __name__ == "__main__":
     dataset_path = "/lustre/orion/tur120/world-shared/daludot/phy_cube_data"
-    loader = GESTDataLoader(dataset_path, verbose=True)
+    loader = GESTSDataLoader(dataset_path, verbose=True)
 
     # Define a random start index for the sub-cube
     start_indices = (512, 512, 512)  # Choose a meaningful location inside the full 2048³ dataset
