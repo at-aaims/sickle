@@ -39,12 +39,7 @@ def load_data(args):
     module = importlib.import_module("dataloaders." + args.dtype)
     DataLoaderClass = module.DataLoader
 
-    # For loaders (like sst-binary) that require the full args object
-    if args.dtype == "sst-binary":
-        dl = DataLoaderClass(args)
-    else:
-        dl = DataLoaderClass(args.path, dims=args.dims)
-
+    dl = DataLoaderClass(args)
     x, y, z = dl.load_xyz()
     X, Y, cv = dl.load_multiple_timesteps(
         args.write_interval, args.num_timesteps, target=args.target, cv=args.cluster_var
