@@ -2,9 +2,9 @@ shared:
   dims: 3
   dtype: gests
   noseed: true
-  input_vars: [u, v, w, r]
-  output_vars: [p, pv]
-  cluster_var: [p, pv]
+  input_vars: [velocity, dissipation]
+  output_vars: pressure
+  cluster_var: enstrophy
   nx: 514
   ny: 512
   nz: 256
