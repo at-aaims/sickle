@@ -1,4 +1,3 @@
-import corner
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -10,7 +9,6 @@ def plot_samples(indices, x, y, z, ts, args):
     plt.rcParams.update({'font.size': 10})
 
     if args.dims == 3:
-        fig = plt.figure(figsize=(10, 8))
         ax = plt.subplot(111, projection='3d')
         ax.view_init(elev=20., azim=-35)
 
@@ -49,51 +47,45 @@ def plot2d_contour(data, y, z, timestep):
     plt.close()
 
 
-def plot_kmeans2(x, y, z, labels, timestep, plot_dir, cluster_var):
-    """
-    Plots the 3D k-means clustering result.
-    
-    Parameters:
-      x, y, z      : Coordinate arrays.
-      labels       : Cluster labels from k-means.
-      timestep     : The current timestep (used in the filename).
-      plot_dir     : Directory where the plot will be saved.
-      cluster_var  : Name of the cluster variable (for plot title).
-    """
-    plt.figure(figsize=(9, 6))
-    ax = plt.subplot(111, projection='3d')
-    sc = ax.scatter(x, y, z, c=labels, marker='.', cmap='tab10')
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title(f'KMeans clustering of {cluster_var}')
-    plt.colorbar(sc, ax=ax)
-    plt.savefig(os.path.join(plot_dir, f'kmeans_{timestep:04d}.png'), dpi=100)
+def plot_kmeans_2d(x, y, labels, timestep):
+    plt.figure(figsize=(9, 2))
+    plt.scatter(x, y, c=labels, marker='.', cmap='tab10')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title(f'KMeans clustering of {args.cluster_var}')
+    plt.colorbar()
+    plt.savefig(os.path.join(args.plot_dir, f'kmeans_{timestep:04d}.png'), dpi=100)
     plt.close()
 
 
-def plot_kmeans(x, y, z, labels, timestep, plot_dir, cluster_var):
+def plot_kmeans_3d(x, y, z, labels, timestep, plot_dir, cluster_var,
+                   show_ticks=False,
+                   show_colorbar=False,
+                   colorbar_range=(0, 20),
+                   show_title=False):
     """
-    Plots the 3D k-means clustering result.
-    
-    If the coordinate arrays (x, y, z) are 1D and not of the desired size,
-    new axes will be generated using np.linspace over the min/max values.
-    
+    Plots the 3D k-means clustering result, with options to hide ticks,
+    show/hide colorbar, and show/hide title.
+
     Parameters:
-      x, y, z      : 1D coordinate arrays. If not of length `desired_dim`,
-                     they will be replaced by np.linspace(min, max, desired_dim).
-      labels       : Cluster labels from k-means. Expected length is desired_dim**3.
-      timestep     : The current timestep (used in the filename).
-      plot_dir     : Directory where the plot will be saved.
-      cluster_var  : Name of the cluster variable (for the plot title).
+      x, y, z        : Coordinate arrays (flattened or meshed).
+      labels         : Cluster labels from k-means.
+      timestep       : The current timestep (used in the filename).
+      plot_dir       : Directory where the plot will be saved.
+      cluster_var    : Name of the cluster variable (for plot title).
+      show_ticks     : Whether to display axis tick labels and the background grid.
+      show_colorbar  : Whether to display the colorbar.
+      colorbar_range : (min, max) range of integer ticks on the colorbar.
+      show_title     : Whether to display the plot title.
     """
-    desired_dim = 32  # We want to plot a 32^3 grid (32768 points)
+    plt.figure(figsize=(9, 6))
+    ax = plt.subplot(111, projection='3d')
     
-    # Check if the provided x, y, z are 1D and of length != desired_dim.
-    if x.ndim == 1 and x.size != desired_dim:
-        new_x = np.linspace(np.min(x), np.max(x), desired_dim)
-        new_y = np.linspace(np.min(y), np.max(y), desired_dim)
-        new_z = np.linspace(np.min(z), np.max(z), desired_dim)
+    # Check if the provided x, y, z are 1D and of length != x.shape[0]
+    if x.ndim == 1 and x.size != x.shape[0]:
+        new_x = np.linspace(np.min(x), np.max(x), x.shape[0])
+        new_y = np.linspace(np.min(y), np.max(y), y.shape[0])
+        new_z = np.linspace(np.min(z), np.max(z), z.shape[0])
         Xgrid, Ygrid, Zgrid = np.meshgrid(new_x, new_y, new_z, indexing='ij')
         x_points = Xgrid.flatten()
         y_points = Ygrid.flatten()
@@ -111,17 +103,38 @@ def plot_kmeans(x, y, z, labels, timestep, plot_dir, cluster_var):
             y_points = y
             z_points = z
 
-    # Create the 3D scatter plot.
-    plt.figure(figsize=(9, 6))
-    ax = plt.subplot(111, projection='3d')
+    # Create the scatter plot
     sc = ax.scatter(x_points, y_points, z_points, c=labels, marker='.', cmap='tab10')
+
+    # Optionally set integer ticks on the colorbar
+    if show_colorbar:
+        cbar = plt.colorbar(sc, ax=ax)
+        # Make integer ticks from colorbar_range[0] to colorbar_range[1]
+        ticks = np.arange(colorbar_range[0], colorbar_range[1] + 1, 1)
+        cbar.set_ticks(ticks)
+        cbar.set_ticklabels(ticks)
+    else:
+        # If you want to hide the colorbar, just don't create one.
+        pass
+
+    # Axis labels
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
-    ax.set_title(f'KMeans clustering of {cluster_var}')
-    plt.colorbar(sc, ax=ax)
+
+    # Toggle the title
+    if show_title:
+        ax.set_title(f"KMeans clustering of {cluster_var}")
+
+    # Hide ticks and background grid if show_ticks is False
+    if not show_ticks:
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_zticks([])
+        ax.grid(False)
+        ax._axis3don = False
+
     fn = f'kmeans_{timestep:04d}.png'
-    print(f'Creating {fn}', flush=True)
     plt.savefig(os.path.join(plot_dir, fn), dpi=100)
     plt.close()
 
@@ -145,7 +158,7 @@ def plot_adjacency_matrix(adj_matrix, n_dists, timestep):
     plt.close()
 
 
-def plot_prob_dists(bin_edges, global_prob_dist, random_prob_dist, maxent_prob_dist, timestep, plot_dir, cluster_var):
+def plot_prob_dists(bin_edges, global_prob_dist, random_prob_dist, maxent_prob_dist, timestep, cluster_var):
     """
     Plots probability distributions for the full dataset, random sampling, and MaxEnt sampling.
     
@@ -175,7 +188,7 @@ def plot_prob_dists(bin_edges, global_prob_dist, random_prob_dist, maxent_prob_d
     plt.legend()
     fn = f'prob_dists_{timestep:04d}.png'
     print(f'Creating {fn}', flush=True)
-    plt.savefig(os.path.join(plot_dir, fn), dpi=100)
+    plt.savefig(os.path.join(args.plot_dir, fn), dpi=100)
     plt.close()
 
 
@@ -196,7 +209,7 @@ def plot_cluster_histogram(cluster_labels, num_clusters, timestep, plot_dir):
     plt.title('Cluster Histogram')
     fn = f'histogram_{timestep:04d}.png'
     print(f'Creating {fn}', flush=True)
-    plt.savefig(os.path.join(plot_dir, fn), dpi=100)
+    plt.savefig(os.path.join(args.plot_dir, fn), dpi=100)
     plt.close()
 
 
@@ -213,7 +226,7 @@ def plot_histograms(X_train, X_test, Y_train, Y_test):
     ax[2].hist(Y_test, bins=bins, alpha=0.5, edgecolor='red', color='red')
     ax[2].set_title('Histogram of Y')
     plt.tight_layout()
-    fn = f'histogram_train_test.png'
+    fn = 'histogram_train_test.png'
     print(f'Creating {fn}', flush=True)
     plt.savefig(os.path.join(args.plot_dir, fn), dpi=100)
     plt.close()
@@ -231,7 +244,9 @@ def plot_learning_curve(train_loss_history, val_loss_history, title=None):
     plt.ylabel(r'Loss ($mse$)')
     plt.legend(frameon=False)
     plt.grid(True)
-    plt.savefig(os.path.join(args.plot_dir, f'ML_loss-curves.png'), dpi=100, bbox_inches='tight')
+    fn = 'ML_loss-curves.png'
+    print(f'Creating {fn}', flush=True)
+    plt.savefig(os.path.join(args.plot_dir, fn), dpi=100, bbox_inches='tight')
     plt.close()
 
 
@@ -256,11 +271,17 @@ def plot_ML_outputs(Y_test_ML, Y_test):
     for i in range(nvar, nrows * ncols):
         axs[i].set_visible(False)
     plt.tight_layout()
-    plt.savefig(os.path.join(args.plot_dir, f'ML_output.png'), dpi=100)
+    fn = 'ML_loss-curves.png'
+    print(f'Creating {fn}', flush=True)
+    plt.savefig(os.path.join(args.plot_dir, fn), dpi=100)
     plt.close()
 
+def plot_contour_box_3d(x, y, z, data, timestep, elev=20, azim=-35):
+    # Create a new figure and 3D axis
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.view_init(elev=elev, azim=azim)
 
-def plot_contour_box(ax, x, y, z, data):
     xx, yy, zz = np.meshgrid(x, y, z, indexing='ij')
     datacube = data.reshape(xx.shape)
     clevels = np.linspace(0.001 * datacube.min(), 0.001 * datacube.max(), 101)
@@ -294,15 +315,22 @@ def plot_contour_box(ax, x, y, z, data):
     ax.set_box_aspect([aspectratio, aspectratio, 1], zoom=1)
     ax.grid(False)
 
+    # Save plot
+    fn = f'contour_{timestep:04d}.png'
+    print(f'Creating {fn}', flush=True)
+    plt.savefig(os.path.join(args.plot_dir, fn), dpi=100)
+    plt.close(fig)
 
-def plot_corner(X):
-    figure = corner.corner(
-        X,
-        bins=30,
-        quantiles=[0.16, 0.5, 0.84],
-        show_titles=True,
-        title_fmt=".2f",
-        labels=[f"var_{i}" for i in range(X.shape[1])]
-    )
-    plt.savefig(os.path.join(args.plot_dir, f'uips_pdf.png'), dpi=100)
-    plt.close()
+
+#def plot_corner(X):
+#    import corner
+#    figure = corner.corner(
+#        X,
+#        bins=30,
+#        quantiles=[0.16, 0.5, 0.84],
+#        show_titles=True,
+#        title_fmt=".2f",
+#        labels=[f"var_{i}" for i in range(X.shape[1])]
+#    )
+#    plt.savefig(os.path.join(args.plot_dir, f'uips_pdf.png'), dpi=100)
+#    plt.close()

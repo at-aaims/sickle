@@ -1,10 +1,11 @@
-# subsampling/maxent.py
+import os
 import numpy as np
 from sklearn.cluster import KMeans
 import scipy.stats
 import pandas as pd
 from .base import Subsampler
-from plotting import plot_adjacency_matrix, plot_kmeans, plot_prob_dists, plot_cluster_histogram
+from plotting import plot_adjacency_matrix, plot_kmeans_3d, plot_prob_dists, \
+                     plot_cluster_histogram, plot_contour_box_3d
 
 class MaxentSubsampler(Subsampler):
     def __init__(self, data, args, coords, cv=None):
@@ -61,7 +62,15 @@ class MaxentSubsampler(Subsampler):
         # Plot KMeans clustering if coordinate data are available.
         if self.coords is not None:
             x, y, z = self.coords
-            plot_kmeans(x, y, z, labels, timestep, self.args.plot_dir, self.args.cluster_var)
+
+            # Plot the KMeans 3D scatter
+            plot_kmeans_3d(x, y, z, labels, timestep, self.args.plot_dir, self.args.cluster_var)
+
+            # Plot the 3D contour box if you have data to show.
+            # We assume 'self.cv[timestep, :]' is shape (len(x)*len(y)*len(z),).
+            contour_data = self.cv[timestep, :]
+            plot_contour_box_3d(x, y, z, contour_data, timestep)
+
         else:
             print("Coordinates (x, y, z) not provided; skipping kmeans plot.")
 
@@ -75,16 +84,19 @@ class MaxentSubsampler(Subsampler):
         # Global probability distribution from the entire cv data at this timestep.
         global_counts, bin_edges = np.histogram(data, bins=num_bins, range=bin_range, density=False)
         global_prob_dist = global_counts / np.sum(global_counts)
+
         # Random sampling: select random indices and compute histogram.
         rand_indices = np.random.choice(data.shape[0], num_samples, replace=False)
         rand_counts, _ = np.histogram(data[rand_indices], bins=num_bins, range=bin_range, density=False)
         random_prob_dist = rand_counts / np.sum(rand_counts)
+
         # MaxEnt sampling probability distribution from the selected indices.
         maxent_counts, _ = np.histogram(data[maxent_indices], bins=num_bins, range=bin_range, density=False)
         maxent_prob_dist = maxent_counts / np.sum(maxent_counts)
+
         # Plot the probability distributions.
         plot_prob_dists(bin_edges, global_prob_dist, random_prob_dist, maxent_prob_dist,
-                        timestep, self.args.plot_dir, self.args.cluster_var)
+                        timestep, self.args.cluster_var)
 
     def perform_kmeans(self, data, num_clusters):
         kmeans = KMeans(n_clusters=num_clusters, random_state=0)
