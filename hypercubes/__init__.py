@@ -28,7 +28,7 @@ def extract_hypercube_IDs(loadpaths, nbytes, file_shape, cube_shape, method, num
     if num_cubes is not None and num_cubes < len(indices):
         if method == 'uniform': 
             sel_indices = np.arange(len(indices), num_cubes)
-        if method == 'random':
+        elif method == 'random':
             sel_indices = np.random.choice(len(indices), num_cubes, replace=False)
         elif method == 'maxent':
             sampled_subcubes = maxent_hypercubes(loadpaths, nx, ny, nz, hx, hy, hz, 
