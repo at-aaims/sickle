@@ -1,19 +1,24 @@
 #!/bin/bash
 #SBATCH -A STF218
 #SBATCH -J sickle
-#SBATCH -p batch  # partition
+##SBATCH -p batch  # partition
+#SBATCH -p extended  # partition
 ##SBATCH -q debug
 #SBATCH -N 1
-#SBATCH -t 02:00:00
+#SBATCH -t 04:00:00
 #SBATCH -o /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
 #SBATCH -e /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.err
+
+### Setup python environment
+
+source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
 
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
 mkdir -p $RUNDIR "$RUNDIR/snapshots" "$RUNDIR/plots"
 #CASE=P1-Xsample-Yfull.yaml
-#CASE=P1-Xsample-Yfull-Hrandom.yaml
-CASE=P1-Xsample-Yfull-Hmaxent.yaml
-#CASE=P1-Xfull-Yfull-Huniform.yaml
+CASE=P1-Xsample-Yfull-Hrandom.yaml
+#CASE=P1-Xsample-Yfull-Hmaxent.yaml
+#CASE=P1-Xfull-Yfull-Huniform.yaml -- doesn't work
 #CASE=P1-Xfull-Yfull-Hrandom.yaml
 #CASE=P1-Xfull-Yfull-Hmaxent.yaml
 
@@ -26,7 +31,6 @@ cd $RUNDIR
 SRC=/lustre/orion/proj-shared/gen150/dsml/sickle
 
 ### SUBSAMPLING 
-source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
 
 # Take energy snapshot
 srun -N $SLURM_NNODES --ntasks-per-node=1 --overlap python -u $SRC/energy.py snapshot start

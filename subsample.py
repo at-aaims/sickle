@@ -18,7 +18,7 @@ def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128)
 
 
 def subsample_data(X, Y, x, y, z, subsampler, args):
-    num_timesteps = X.shape[0] // args.window * args.window + 1
+    num_timesteps = X.shape[0]
     print(f"num_timesteps: {num_timesteps}")
 
     Xout = np.zeros((num_timesteps, args.num_samples, X.shape[2]))
@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     # Load the data
     X, Y, cv, x, y, z = load_data(args)
-    num_timesteps = X.shape[0] // args.window * args.window + 1
+    num_timesteps = X.shape[0]
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
 
     # Define subsample function based on method
@@ -90,10 +90,10 @@ if __name__ == "__main__":
 
     # Reshape Xout and Yout to 1D or 3D based on args.method and args.field_prediction_type
     if args.method == "full":
-        Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[2])
+        Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[-1])
 
     if args.field_prediction_type == FieldPredictionType.FULL:
-        Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[2])
+        Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[-1])
 
     # Save output
     outfilename = f"subsampled_{args.fileprefix}.npz"

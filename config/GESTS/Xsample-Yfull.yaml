@@ -5,9 +5,9 @@ shared:
   input_vars: [velocity, dissipation]
   output_vars: pressure
   cluster_var: enstrophy
-  nx: 514
-  ny: 512
-  nz: 256
+  nx: 1024
+  ny: 1024
+  nz: 1024
   gravity: z
   plot: true
   fileprefix: "GESTS-cubes{num_hypercubes}-{nx}x{ny}x{nz}-ns{num_samples}-window{window}"

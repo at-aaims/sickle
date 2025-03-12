@@ -56,9 +56,9 @@ class GESTSDataLoader(DataLoader):
         """Generate 1D x, y, z coordinate arrays instead of full 3D grids."""
         if self.verbose:
             print("Generating coordinate arrays...")
-        x = np.linspace(0, 1, self.grid_size[0])
-        y = np.linspace(0, 1, self.grid_size[1])
-        z = np.linspace(0, 1, self.grid_size[2])
+        x = np.linspace(0, 1, self.subcube_size[0])
+        y = np.linspace(0, 1, self.subcube_size[1])
+        z = np.linspace(0, 1, self.subcube_size[2])
         self.num_pts = np.prod(self.subcube_size)
         if self.verbose:
             print(f"Coordinate arrays generated successfully. num_pts: {self.num_pts}")
