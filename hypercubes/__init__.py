@@ -39,7 +39,7 @@ def extract_hypercube_IDs(loadpaths, nbytes, file_shape, cube_shape, method, num
             # Convert 3D to 1D
             sel_indices = np.array([ix + num_x * (iy + num_y * iz) for (ix, iy, iz) in sampled_subcubes])
         else:
-            raise ValueError("Unknown subsampling method: choose 'random' or 'maxent'.")
+            raise ValueError("Unknown subsampling method.")
 
     hypercubeIDs = [indices[i] for i in sel_indices]
 
