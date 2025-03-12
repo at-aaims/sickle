@@ -15,7 +15,7 @@ def plot_samples(indices, x, y, z, ts, args):
         ax = plt.subplot(111, projection='3d')
         ax.view_init(elev=20., azim=-35)
 
-        if args.dtype in ['npz', 'sst-binary']:
+        if args.dtype in ['npz', 'sst-binary', 'gests']:
             x_indices, y_indices, z_indices = np.unravel_index(
                 indices, (x.shape[0], y.shape[0], z.shape[0])
             )

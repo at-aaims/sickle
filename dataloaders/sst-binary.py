@@ -9,7 +9,7 @@ from hypercubes import extract_hypercube_IDs
 class DataLoaderSSTBinary(DataLoader):
 
     def __init__(self, args):
-        super().__init__(args.path, dims=args.dims)
+        super().__init__(args.path, args.dims, args.verbose)
         self.args = args
         self.path = args.path
 

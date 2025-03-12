@@ -40,8 +40,8 @@ def subsample_data(X, Y, x, y, z, subsampler, args):
         indices = subsampler.sample(args.num_samples, timestep)
         subsampled_indices_list.append(indices)
 
-        #if args.plot and args.method != "full":
-        #    plot_samples(indices, x, y, z, timestep, args)
+        if args.plot and args.method != "full":
+            plot_samples(indices, x, y, z, timestep, args)
 
         for sub_timestep in range(args.window):
             ts = timestep + sub_timestep
