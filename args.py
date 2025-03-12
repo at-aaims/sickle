@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import yaml
 
 from constants import FieldPredictionType
@@ -91,6 +92,11 @@ parser.add_argument("--saveData", default=False, action='store_true', help="Save
 
 # Parse command-line arguments
 args = parser.parse_args()
+
+# Explicitly check if the file exists
+if args.config_file and not os.path.isfile(args.config_file):
+    print(f"Error: Configuration file '{args.config_file}' not found.", file=sys.stderr)
+    sys.exit(1)
 
 # Load the YAML config if specified
 if args.config_file:
