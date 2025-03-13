@@ -42,5 +42,6 @@ def extract_hypercube_IDs(loadpaths, nbytes, file_shape, cube_shape, method, num
             raise ValueError("Unknown subsampling method.")
 
     hypercubeIDs = [indices[i] for i in sel_indices]
+    print("*** hypercubeIDs:", hypercubeIDs)
 
     return hypercubeIDs
