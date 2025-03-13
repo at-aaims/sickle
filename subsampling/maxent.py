@@ -8,12 +8,20 @@ from plotting import plot_adjacency_matrix, plot_kmeans_3d, plot_prob_dists, \
                      plot_cluster_histogram, plot_contour_box_3d, plot_samples
 
 class MaxentSubsampler(Subsampler):
-    def __init__(self, data, args, coords, cv=None):
+    def __init__(self, data, args, **kwargs):
         super().__init__(data, args)
+
+        # Extract coords from kwargs
+        coords = kwargs.get('coords')
+        if coords is None:
+            raise ValueError("MaxentSubsampler requires coords")
+        self.coords = coords
+
+        # Extract cv from kwargs
+        cv = kwargs.get('cv')
         if cv is None:
             raise ValueError("MaxentSubsampler requires a cv array")
         self.cv = cv
-        self.coords = coords
 
     def sample(self, num_samples, timestep):
         # Use cv for clustering instead of self.data.
@@ -44,6 +52,37 @@ class MaxentSubsampler(Subsampler):
             self.generate_plots(data, labels, clusters, indices, timestep, num_samples)
 
         return np.array(indices)
+
+    def perform_kmeans(self, data, num_clusters):
+        kmeans = KMeans(n_clusters=num_clusters, random_state=0)
+        kmeans.fit(data)
+        labels = kmeans.labels_
+        clusters = [data[labels == i].flatten() for i in range(num_clusters)]
+        return labels, clusters
+
+    def compute_entropy(self, clusters, timestep=0, num_bins=50):
+        prob_dists = []
+        bin_edges_list = []
+        bin_range = (min([np.min(cluster) for cluster in clusters]),
+                     max([np.max(cluster) for cluster in clusters]))
+        for cluster in clusters:
+            counts, bin_edges = np.histogram(cluster, bins=num_bins, range=bin_range, density=False)
+            prob_dist = counts / np.sum(counts)
+            prob_dists.append(prob_dist)
+            bin_edges_list.append(bin_edges)
+        n_clusters = len(clusters)
+        adj_matrix = np.zeros((n_clusters, n_clusters))
+        for i in range(n_clusters):
+            for j in range(n_clusters):
+                p = prob_dists[i] + 1e-10  # avoid division by zero
+                q = prob_dists[j] + 1e-10
+                adj_matrix[i, j] = scipy.stats.entropy(p, q)
+        in_strengths = np.sum(adj_matrix, axis=0)
+        if self.args.plot:
+            df = pd.DataFrame(adj_matrix)
+            print(df)
+            plot_adjacency_matrix(adj_matrix, n_clusters, timestep)
+        return in_strengths
 
     def generate_plots(self, data, labels, clusters, maxent_indices, timestep, num_samples):
         """
@@ -95,34 +134,3 @@ class MaxentSubsampler(Subsampler):
         # Plot the probability distributions.
         plot_prob_dists(bin_edges, global_prob_dist, random_prob_dist, maxent_prob_dist,
                         timestep, self.args.cluster_var)
-
-    def perform_kmeans(self, data, num_clusters):
-        kmeans = KMeans(n_clusters=num_clusters, random_state=0)
-        kmeans.fit(data)
-        labels = kmeans.labels_
-        clusters = [data[labels == i].flatten() for i in range(num_clusters)]
-        return labels, clusters
-
-    def compute_entropy(self, clusters, timestep=0, num_bins=50):
-        prob_dists = []
-        bin_edges_list = []
-        bin_range = (min([np.min(cluster) for cluster in clusters]),
-                     max([np.max(cluster) for cluster in clusters]))
-        for cluster in clusters:
-            counts, bin_edges = np.histogram(cluster, bins=num_bins, range=bin_range, density=False)
-            prob_dist = counts / np.sum(counts)
-            prob_dists.append(prob_dist)
-            bin_edges_list.append(bin_edges)
-        n_clusters = len(clusters)
-        adj_matrix = np.zeros((n_clusters, n_clusters))
-        for i in range(n_clusters):
-            for j in range(n_clusters):
-                p = prob_dists[i] + 1e-10  # avoid division by zero
-                q = prob_dists[j] + 1e-10
-                adj_matrix[i, j] = scipy.stats.entropy(p, q)
-        in_strengths = np.sum(adj_matrix, axis=0)
-        if self.args.plot:
-            df = pd.DataFrame(adj_matrix)
-            print(df)
-            plot_adjacency_matrix(adj_matrix, n_clusters, timestep)
-        return in_strengths

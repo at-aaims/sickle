@@ -78,7 +78,7 @@ if __name__ == "__main__":
     if args.method == "maxent":
         subsampler = get_subsampler(X, args, coords=(x, y, z), cv=cv)
     else:
-        subsampler = get_subsampler(X, args, coords=(x, y, z))
+        subsampler = get_subsampler(X, args)
 
     # Perform subsampling
     Xout, Yout, indices_list = subsample_data(X, Y, x, y, z, subsampler, args)

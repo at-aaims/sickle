@@ -86,7 +86,7 @@ local_timesteps = np.array_split(range(X.shape[0]), size)[rank]
 
 # For maxent, pass cv; otherwise just use X.
 if args.method == "maxent":
-    subsampler = get_subsampler(X, args, cv=cv)
+    subsampler = get_subsampler(X, args, coords=(x, y, z), cv=cv)
 else:
     subsampler = get_subsampler(X, args)
 

@@ -5,18 +5,18 @@ from .phase_space import PhaseSpaceSubsampler
 from .stratified import StratifiedSubsampler
 from .lhs import LatinHypercubeSubsampler
 
-def get_subsampler(data, args, coords, **kwargs):
+def get_subsampler(data, args, **kwargs):
     """Factory function to select subsampler based on args.method"""
     if args.method == "maxent":
-        return MaxentSubsampler(data, args, coords, **kwargs)
+        return MaxentSubsampler(data, args, **kwargs)
     elif args.method == "random":
-        return RandomSubsampler(data, args, coords)
+        return RandomSubsampler(data, args)
     elif args.method == "uips":
-        return PhaseSpaceSubsampler(data, args, coords)
+        return PhaseSpaceSubsampler(data, args)
     elif args.method == "stratified":
-        return StratifiedSubsampler(data, args, coords)
+        return StratifiedSubsampler(data, args)
     elif args.method == "lhs":
-        return LatinHypercubeSubsampler(data, args, coords)
+        return LatinHypercubeSubsampler(data, args)
     elif args.method == "full":
         return np.arange(data.shape[1])
     else:
