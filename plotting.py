@@ -297,12 +297,12 @@ def plot_contour_box_3d(x, y, z, data, timestep):
 
     xx, yy, zz = np.meshgrid(x, y, z, indexing='ij')
     datacube = data.reshape(xx.shape)
-    clevels = np.linspace(0.001 * datacube.min(), 0.001 * datacube.max(), 101)
+    clevels = np.linspace(datacube.min(), datacube.max(), 101)
     kw = {
         'vmin': clevels.min(),
         'vmax': clevels.max(),
         'levels': clevels,
-        'cmap': 'RdBu_r',
+        'cmap': 'RdBu',
         'extend': 'both',
         'alpha': 0.5
     }
@@ -323,7 +323,7 @@ def plot_contour_box_3d(x, y, z, data, timestep):
     ax.plot([xmin, xmax], [zmin, zmin], ymax, **edges_kw)
     ax.plot([xmax, xmax], [zmin, zmin], [ymin, ymax], **edges_kw)
     ax.set(xlabel='X', ylabel='Z', zlabel='Y')
-    ax.view_init(20, -45)
+    ax.view_init(elev, azim)
     aspectratio = int(len(x) / len(y))
     ax.set_box_aspect([aspectratio, aspectratio, 1], zoom=1)
     ax.grid(False)
