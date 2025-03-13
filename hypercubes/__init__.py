@@ -27,7 +27,7 @@ def extract_hypercube_IDs(loadpaths, nbytes, file_shape, cube_shape, method, num
     # If the user has specified to select fewer cubes, apply selection.
     if num_cubes is not None and num_cubes <= len(indices):
         if method == 'uniform': 
-            sel_indices = np.arange(len(indices), num_cubes)
+            sel_indices = np.arange(num_cubes)
         elif method == 'random':
             sel_indices = np.random.choice(len(indices), num_cubes, replace=False)
         elif method == 'maxent':
@@ -42,6 +42,6 @@ def extract_hypercube_IDs(loadpaths, nbytes, file_shape, cube_shape, method, num
             raise ValueError("Unknown subsampling method.")
 
     hypercubeIDs = [indices[i] for i in sel_indices]
-    print("*** hypercubeIDs:", hypercubeIDs)
+    print("selected hypercubes:", hypercubeIDs)
 
     return hypercubeIDs
