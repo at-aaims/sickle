@@ -3,30 +3,43 @@ import numpy as np
 import os
 from args import args
 
-def plot_samples(indices, x, y, z, ts, args):
+elev = 20
+azim = -45
+show_ticks = False
+figsize = (9, 6)
+
+def plot_samples(indices, labels, x, y, z, ts):
     """Plot subsampled data based on input dimensions and settings."""
     plt.clf()
     plt.rcParams.update({'font.size': 10})
 
     if args.dims == 3:
         ax = plt.subplot(111, projection='3d')
-        ax.view_init(elev=20., azim=-35)
+        ax.view_init(elev=elev, azim=azim)
 
         if args.dtype in ['npz', 'sst-binary', 'gests']:
             x_indices, y_indices, z_indices = np.unravel_index(
                 indices, (x.shape[0], y.shape[0], z.shape[0])
             )
             ax.scatter(
-                x[x_indices], z[z_indices], y[y_indices], c='k', s=2, alpha=0.5
+                x[x_indices], z[z_indices], y[y_indices], c=labels, s=5, alpha=0.5
             )
         else:
-            ax.scatter(x[indices], y[indices], z[indices], c='k', s=2, alpha=0.5)
+            ax.scatter(x[indices], y[indices], z[indices], c=labels, s=5, alpha=0.5)
     else:
         plt.figure(figsize=(9, 2))
-        plt.scatter(x[indices], y[indices], c='k', s=2, alpha=0.5)
+        plt.scatter(x[indices], y[indices], c=labels, s=5, alpha=0.5)
         plt.xlim([-25, 65])
         plt.ylim([-10, 10])
         plt.axis('equal')
+
+    # Hide ticks and background grid if show_ticks is False
+    if not show_ticks:
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_zticks([])
+        #ax.grid(False)
+        #ax._axis3don = False
 
     fn = f'subsample_plot_t{ts:04d}.png'
     print(f'Creating {fn}')
@@ -59,7 +72,6 @@ def plot_kmeans_2d(x, y, labels, timestep):
 
 
 def plot_kmeans_3d(x, y, z, labels, timestep, plot_dir, cluster_var,
-                   show_ticks=False,
                    show_colorbar=False,
                    colorbar_range=(0, 20),
                    show_title=False):
@@ -78,8 +90,9 @@ def plot_kmeans_3d(x, y, z, labels, timestep, plot_dir, cluster_var,
       colorbar_range : (min, max) range of integer ticks on the colorbar.
       show_title     : Whether to display the plot title.
     """
-    plt.figure(figsize=(9, 6))
+    #plt.figure(figsize=figsize)
     ax = plt.subplot(111, projection='3d')
+    ax.view_init(elev=elev, azim=azim)
     
     # Check if the provided x, y, z are 1D and of length != x.shape[0]
     if x.ndim == 1 and x.size != x.shape[0]:
@@ -276,9 +289,9 @@ def plot_ML_outputs(Y_test_ML, Y_test):
     plt.savefig(os.path.join(args.plot_dir, fn), dpi=100)
     plt.close()
 
-def plot_contour_box_3d(x, y, z, data, timestep, elev=20, azim=-35):
+def plot_contour_box_3d(x, y, z, data, timestep):
     # Create a new figure and 3D axis
-    fig = plt.figure(figsize=(10, 8))
+    fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, projection='3d')
     ax.view_init(elev=elev, azim=azim)
 
@@ -314,6 +327,14 @@ def plot_contour_box_3d(x, y, z, data, timestep, elev=20, azim=-35):
     aspectratio = int(len(x) / len(y))
     ax.set_box_aspect([aspectratio, aspectratio, 1], zoom=1)
     ax.grid(False)
+
+    # Hide ticks and background grid if show_ticks is False
+    if not show_ticks:
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_zticks([])
+        ax.grid(False)
+        ax._axis3don = False
 
     # Save plot
     fn = f'contour_{timestep:04d}.png'

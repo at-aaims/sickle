@@ -5,7 +5,7 @@ import scipy.stats
 import pandas as pd
 from .base import Subsampler
 from plotting import plot_adjacency_matrix, plot_kmeans_3d, plot_prob_dists, \
-                     plot_cluster_histogram, plot_contour_box_3d
+                     plot_cluster_histogram, plot_contour_box_3d, plot_samples
 
 class MaxentSubsampler(Subsampler):
     def __init__(self, data, args, coords, cv=None):
@@ -59,20 +59,18 @@ class MaxentSubsampler(Subsampler):
           timestep       : Current timestep (for filenames).
           num_samples    : Number of samples requested.
         """
-        # Plot KMeans clustering if coordinate data are available.
-        if self.coords is not None:
-            x, y, z = self.coords
+        x, y, z = self.coords
 
-            # Plot the KMeans 3D scatter
-            plot_kmeans_3d(x, y, z, labels, timestep, self.args.plot_dir, self.args.cluster_var)
+        # Plot the KMeans 3D scatter
+        plot_kmeans_3d(x, y, z, labels, timestep, self.args.plot_dir, self.args.cluster_var)
 
-            # Plot the 3D contour box if you have data to show.
-            # We assume 'self.cv[timestep, :]' is shape (len(x)*len(y)*len(z),).
-            contour_data = self.cv[timestep, :]
-            plot_contour_box_3d(x, y, z, contour_data, timestep)
+        # Plot the 3D contour box if you have data to show.
+        # We assume 'self.cv[timestep, :]' is shape (len(x)*len(y)*len(z),).
+        contour_data = self.cv[timestep, :]
+        plot_contour_box_3d(x, y, z, contour_data, timestep)
 
-        else:
-            print("Coordinates (x, y, z) not provided; skipping kmeans plot.")
+        # Plot samples
+        plot_samples(maxent_indices, labels[maxent_indices], x, y, z, timestep)
 
         # Plot the cluster histogram.
         plot_cluster_histogram(labels, self.args.num_clusters, timestep, self.args.plot_dir)
