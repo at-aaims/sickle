@@ -139,11 +139,11 @@ class Trainer:
                 num_batches += 1
                 scaler.update()
                 end_iter = time.perf_counter()
-                print(f"Epoch {epoch+1}, Iteration {i+1}/{len(self.train_loader)} took {end_iter - start_iter:.4f} seconds")
+                #print(f"Epoch {epoch+1}, Iteration {i+1}/{len(self.train_loader)} took {end_iter - start_iter:.4f} seconds")
             end_epoch = time.perf_counter()
 
-            if self.rank == 0:
-                print(f"Epoch {epoch+1} took {end_epoch - start_epoch:.2f} seconds in total")
+            #if self.rank == 0:
+            #    print(f"Epoch {epoch+1} took {end_epoch - start_epoch:.2f} seconds in total")
 
             # Compute average training loss for this epoch
             epoch_train_loss = running_loss / num_batches
@@ -170,6 +170,27 @@ class Trainer:
 
         self.last_eval_Y = Y_test_ML
         self.last_ref_Y = Y_test
+        if self.rank == 0: 
+            print(f"num batches during training {num_batches}")
+
+    def eval(self):
+        """Evaluate the test set and print the final loss."""
+        self.model.eval()
+        criterion = nn.MSELoss()
+        dev_type = self.device.type
+        # Use the appropriate context for mixed precision
+        ctx = NoContext() if args.mxp_mode == "none" else \
+            torch.autocast(device_type=dev_type, dtype=prec_dict[args.precision])
+
+        with torch.no_grad():
+            X_test = self.X_test.to(self.device)
+            Y_test = self.Y_test.to(self.device)
+            with ctx:
+                outputs = self.model(X_test)
+                final_loss = criterion(outputs, Y_test)
+        if self.rank == 0:
+            print(f"\033[92m \U0001F680 Evaluation on test set: Loss = {final_loss.item():.4f}\033[0m")
+
 
 def main():
     """
@@ -236,6 +257,7 @@ def main():
 
     trainer = Trainer(args, X_train, Y_train, X_test, Y_test)
     trainer.training_loop()
+    trainer.eval()
 
 
 if __name__ == "__main__":
