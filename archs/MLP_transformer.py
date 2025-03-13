@@ -36,7 +36,7 @@ class MLP_transformer(nn.Module):
                 nhead=num_heads,
                 dim_feedforward=dim_feedforward,
                 dropout=dropout,
-                activation='relu',
+                activation=self.activation,
                 batch_first=True
             ),
             num_layers=num_layers
