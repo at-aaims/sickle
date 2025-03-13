@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -A STF218
 #SBATCH -J sickle
+#SBATCH -p extended
 ##SBATCH -p batch  # partition
-#SBATCH -p extended  # partition
 ##SBATCH -q debug
 #SBATCH -N 1
 #SBATCH -t 04:00:00
@@ -11,16 +11,21 @@
 
 ### Setup python environment
 
-source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
+source /lustre/orion/gen150/world-shared/sickle/venv/pyt/bin/activate
 
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
 mkdir -p $RUNDIR "$RUNDIR/snapshots" "$RUNDIR/plots"
+#CASE=P1-Xrandom-Yfull-Hrandom-32.yaml
+#CASE=P1-Xuips-Yfull-Hrandom-32.yaml
+CASE=P1-Xfull-Yfull-Huniform.yaml 
+
 #CASE=P1-Xsample-Yfull.yaml
-CASE=P1-Xsample-Yfull-Hrandom.yaml
-#CASE=P1-Xsample-Yfull-Hmaxent.yaml
-#CASE=P1-Xfull-Yfull-Huniform.yaml -- doesn't work
+#CASE=P1-Xsample-Yfull-Hrandom.yaml
+#CASE=P1-Xsample-Yfull-Hmaxent-32.yaml
+#CASE=P1-Xfull-Yfull-Huniform.yaml
 #CASE=P1-Xfull-Yfull-Hrandom.yaml
 #CASE=P1-Xfull-Yfull-Hmaxent.yaml
+
 
 CASEPATH=config/SST/$CASE
 
