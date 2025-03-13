@@ -105,7 +105,13 @@ class Trainer:
     def training_loop(self):
 
         # Define optimizer and loss function
-        optimizer = optim.Adam(self.model.parameters(), lr=0.001)
+        optimizer = optim.Adam(self.model.parameters(), lr=0.5)
+
+        # Create a scheduler that monitors the validation loss
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode='min', factor=0.1, patience=args.patience, verbose=True
+        )
+
         criterion = nn.MSELoss()
 
         dev_type = self.device.type
@@ -166,7 +172,12 @@ class Trainer:
             epoch_val_loss = val_loss / val_batches
             if self.rank == 0:
                 self.val_loss_history.append(epoch_val_loss)
-                print(f"Epoch {epoch+1:3d}/{args.epochs:3d} - Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f}", flush=True)
+                current_lr = optimizer.param_groups[0]['lr']
+                print(f"Epoch {epoch+1:3d}/{args.epochs:3d} - Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f} | LR: {current_lr:.6f}", flush=True)
+                #print(f"Epoch {epoch+1:3d}/{args.epochs:3d} - Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f}", flush=True)
+
+            # Update the scheduler with the validation loss
+            scheduler.step(epoch_val_loss)
 
         self.last_eval_Y = Y_test_ML
         self.last_ref_Y = Y_test
