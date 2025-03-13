@@ -25,7 +25,7 @@ def extract_hypercube_IDs(loadpaths, nbytes, file_shape, cube_shape, method, num
                 indices.append((ix, iy, iz))
 
     # If the user has specified to select fewer cubes, apply selection.
-    if num_cubes is not None and num_cubes < len(indices):
+    if num_cubes is not None and num_cubes <= len(indices):
         if method == 'uniform': 
             sel_indices = np.arange(len(indices), num_cubes)
         elif method == 'random':
