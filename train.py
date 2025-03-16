@@ -176,7 +176,7 @@ class Trainer:
             if self.rank == 0:
                 self.val_loss_history.append(epoch_val_loss)
                 current_lr = scheduler.get_last_lr()[0]
-                print(f"Epoch {epoch+1:3d}/{args.epochs:3d} - Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f} | LR: {current_lr:.6e}", flush=True)
+                print(f"Epoch {epoch+1:3d}/{args.epochs:3d} - Train Loss: {epoch_train_loss:.6e} | Val Loss: {epoch_val_loss:.6e} | LR: {current_lr:.6e}", flush=True)
                 #print(f"Epoch {epoch+1:3d}/{args.epochs:3d} - Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f}", flush=True)
 
             # Update the scheduler with the validation loss
@@ -203,7 +203,7 @@ class Trainer:
                 outputs = self.model(X_test)
                 final_loss = criterion(outputs, Y_test)
         if self.rank == 0:
-            print(f"\033[92m \U0001F680 Evaluation on test set: Loss = {final_loss.item():.4f}\033[0m")
+            print(f"\033[92m \U0001F680 Evaluation on test set: Loss = {final_loss.item():.6e}\033[0m")
 
 
 def main():
