@@ -135,6 +135,8 @@ def aggregate_reports():
     It groups files by node id (the prefix of the file name),
     computes each node's overall energy consumption (first to last snapshot),
     and then computes an overall cluster summary.
+    Additionally, it provides a breakdown between CPU energy (CPU + Mem)
+    and GPU energy (Accel0 - Accel3).
     """
     jobid = os.environ.get('SLURM_JOBID', 'local_job')
     output_dir = create_output_dir(jobid)
@@ -160,9 +162,10 @@ def aggregate_reports():
             print(f"Error reading {file}: {e}")
     
     overall_cluster_energy = 0.0
+    overall_cpu_energy = 0.0
+    overall_gpu_energy = 0.0
     cluster_start = None
     cluster_end = None
-    energy_keys = ["CPU", "Mem", "Accel0", "Accel1", "Accel2", "Accel3"]
     
     print("Per-Node Energy Consumption:")
     for node_id, snaps in node_snapshots.items():
@@ -176,23 +179,33 @@ def aggregate_reports():
         if cluster_end is None or node_end > cluster_end:
             cluster_end = node_end
         
-        node_energy = 0.0
-        for key in energy_keys:
-            try:
-                delta_value = snaps[-1].get(key, 0) - snaps[0].get(key, 0)
-                node_energy += delta_value
-            except Exception as e:
-                print(f"Error computing delta for node {node_id}, key {key}: {e}")
-        overall_cluster_energy += node_energy
+        # Calculate CPU energy: sum of CPU and Mem deltas
+        cpu_energy = (
+            (snaps[-1].get("CPU", 0) - snaps[0].get("CPU", 0)) +
+            (snaps[-1].get("Mem", 0) - snaps[0].get("Mem", 0))
+        )
+        # Calculate GPU energy: sum of Accelerators' deltas
+        gpu_energy = (
+            (snaps[-1].get("Accel0", 0) - snaps[0].get("Accel0", 0)) +
+            (snaps[-1].get("Accel1", 0) - snaps[0].get("Accel1", 0)) +
+            (snaps[-1].get("Accel2", 0) - snaps[0].get("Accel2", 0)) +
+            (snaps[-1].get("Accel3", 0) - snaps[0].get("Accel3", 0))
+        )
+        node_total_energy = cpu_energy + gpu_energy
+        overall_cluster_energy += node_total_energy
+        overall_cpu_energy += cpu_energy
+        overall_gpu_energy += gpu_energy
         
         elapsed_node = node_end - node_start
         if elapsed_node > 0:
-            avg_power_node = node_energy / elapsed_node
+            avg_power_node = node_total_energy / elapsed_node
         else:
             avg_power_node = None
         
         print(f"\nNode {node_id}:")
-        print(f"  Energy Consumed: {node_energy:.2f} Joules")
+        print(f"  Total Energy Consumed: {node_total_energy:.2f} Joules")
+        print(f"    CPU Energy (CPU + Mem): {cpu_energy:.2f} Joules")
+        print(f"    GPU Energy (Accel0 - Accel3): {gpu_energy:.2f} Joules")
         print(f"  Elapsed Time: {elapsed_node:.2f} seconds")
         if avg_power_node is not None:
             print(f"  Average Power: {avg_power_node:.2f} Watts")
@@ -207,12 +220,15 @@ def aggregate_reports():
     
     print("\nOverall Cluster Summary:")
     print(f"  Total Energy Consumed: {overall_cluster_energy:.2f} Joules")
+    print(f"    Total CPU Energy (CPU + Mem): {overall_cpu_energy:.2f} Joules")
+    print(f"    Total GPU Energy (Accel0 - Accel3): {overall_gpu_energy:.2f} Joules")
     print(f"  Cluster Elapsed Time: {cluster_elapsed:.2f} seconds")
     if cluster_elapsed > 0:
         overall_avg_power = overall_cluster_energy / cluster_elapsed
         print(f"  Overall Average Power: {overall_avg_power:.2f} Watts")
     else:
         print("  Overall Average Power: not available")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Energy monitoring tool with lap and aggregation functionality")
