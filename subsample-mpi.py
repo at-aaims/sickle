@@ -6,6 +6,7 @@ from mpi4py import MPI
 from args import args
 from constants import FieldPredictionType
 from dataloaders import load_data  # , parallel_load_data
+from energy import take_snapshot, report_snapshots, aggregate_reports
 from helpers import check_and_create_dirs
 from subsampling import get_subsampler
 from viz import save_vtu
@@ -80,6 +81,7 @@ args = comm.bcast(args_to_broadcast, root=0)
 
 comm.Barrier()  # Synchronize all processes
 start_sampling = MPI.Wtime()
+take_snapshot('start') # energy benchmark
 
 # Divide timesteps among processes
 local_timesteps = np.array_split(range(X.shape[0]), size)[rank]
@@ -104,6 +106,7 @@ all_results = comm.gather(local_results, root=0)
 
 # Synchronize after sampling.
 comm.Barrier()
+take_snapshot('end') # energy benchmark
 end_sampling = MPI.Wtime()
 
 # Optionally, compute the maximum time among all processes.
@@ -112,6 +115,9 @@ total_sampling_time = comm.reduce(end_sampling - start_sampling, op=MPI.MAX, roo
 if rank == 0:
     print(f"TIMINGS: FILE LOAD: {end_fileio - start_fileio}s")
     print(f"TIMINGS: SUBSAMPLING TIME: {total_sampling_time}s")
+
+    print("Aggregating energy reports across nodes:")
+    aggregate_reports()
 
     # Root process aggregates results
     if not os.path.exists(args.output_dir):

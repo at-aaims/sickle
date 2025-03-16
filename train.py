@@ -15,6 +15,7 @@ import importlib
 from args import args
 from constants import *
 from dataloaders import create_sequences
+from energy import take_snapshot, report_snapshots, aggregate_reports
 from helpers import scale, compute_memory
 from plotting import plot_ML_outputs, plot_learning_curve
 
@@ -105,11 +106,13 @@ class Trainer:
     def training_loop(self):
 
         # Define optimizer and loss function
-        optimizer = optim.Adam(self.model.parameters(), lr=0.5)
+        #optimizer = optim.Adam(self.model.parameters(), lr=0.5)
+        optimizer = optim.Adam(self.model.parameters(), lr=1e-3)
 
         # Create a scheduler that monitors the validation loss
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='min', factor=0.1, patience=args.patience, verbose=True
+            #optimizer, mode='min', factor=0.5, patience=args.patience, verbose=True, threshold=1e-4
+            optimizer, mode='min', factor=0.5, patience=100, verbose=True, threshold=1e-4
         )
 
         criterion = nn.MSELoss()
@@ -172,8 +175,8 @@ class Trainer:
             epoch_val_loss = val_loss / val_batches
             if self.rank == 0:
                 self.val_loss_history.append(epoch_val_loss)
-                current_lr = optimizer.param_groups[0]['lr']
-                print(f"Epoch {epoch+1:3d}/{args.epochs:3d} - Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f} | LR: {current_lr:.6f}", flush=True)
+                current_lr = scheduler.get_last_lr()[0]
+                print(f"Epoch {epoch+1:3d}/{args.epochs:3d} - Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f} | LR: {current_lr:.6e}", flush=True)
                 #print(f"Epoch {epoch+1:3d}/{args.epochs:3d} - Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f}", flush=True)
 
             # Update the scheduler with the validation loss
@@ -242,7 +245,7 @@ def main():
     print(f"X: {X.shape}; Y: {Y.shape}", flush=True)
 
     # train:val split
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_frac, shuffle=False)
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_frac, shuffle=args.shuffle)
 
     # Scale the data
     scaler_x = eval(args.xscaler)()
@@ -267,8 +270,15 @@ def main():
     #main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test)
 
     trainer = Trainer(args, X_train, Y_train, X_test, Y_test)
+    take_snapshot('start') # energy benchmark
     trainer.training_loop()
+    take_snapshot('end') 
     trainer.eval()
+
+    # Only the rank 0 process should perform aggregation.
+    if trainer.rank == 0:
+        print("Aggregating energy reports across nodes:")
+        aggregate_reports()
 
 
 if __name__ == "__main__":

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import argparse
+import inspect
+import json
 import os
 import time
-import json
 from pathlib import Path
 
 def create_output_dir(jobid):
@@ -10,11 +11,30 @@ def create_output_dir(jobid):
     output_dir.mkdir(exist_ok=True)
     return output_dir
 
-def take_snapshot(label):
+def get_calling_filename():
+    # Get the filename of the caller (one level up in the stack)
+    caller_file = inspect.stack()[1].filename
+    # Extract the basename without extension
+    base_name = os.path.splitext(os.path.basename(caller_file))[0]
+    return base_name
+
+def create_output_dir(jobid, benchmark_name=None):
+    """
+    Creates an output directory based on the benchmark name.
+    If benchmark_name is not provided, it uses the calling file's name.
+    """
+    if benchmark_name is None:
+        benchmark_name = get_calling_filename()
+    # You can include the jobid if needed
+    output_dir = Path(f"{jobid}_{benchmark_name}_Power")
+    os.makedirs(output_dir, exist_ok=True)
+    return output_dir
+
+def take_snapshot(label, benchmark_name=None):
     jobid = os.environ.get('SLURM_JOBID', 'local_job')
     nodeid = os.environ.get('SLURM_NODEID', '0')
     hostname = os.uname().nodename
-    output_dir = create_output_dir(jobid)
+    output_dir = create_output_dir(jobid, benchmark_name)
     snapshot_file = output_dir / f"{nodeid}_snapshot_{label}.json"
     
     # Define the energy counter file paths
@@ -31,7 +51,7 @@ def take_snapshot(label):
     # Use time.perf_counter() for high-resolution elapsed time measurement
     snapshot = {
         "timestamp": time.perf_counter(),        # high-resolution timer (seconds)
-        "timestamp_readable": time.ctime(),        # human-readable system time
+        "timestamp_readable": time.ctime(),      # human-readable system time
         "hostname": hostname,
         "phase": label
     }
