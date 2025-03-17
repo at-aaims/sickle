@@ -6,11 +6,6 @@ import os
 import time
 from pathlib import Path
 
-def create_output_dir(jobid):
-    output_dir = Path(f"{jobid}_Power")
-    output_dir.mkdir(exist_ok=True)
-    return output_dir
-
 def get_calling_filename():
     # Get the filename of the caller (one level up in the stack)
     caller_file = inspect.stack()[1].filename
@@ -25,15 +20,16 @@ def create_output_dir(jobid, benchmark_name=None):
     """
     if benchmark_name is None:
         benchmark_name = get_calling_filename()
-    # You can include the jobid if needed
-    output_dir = Path(f"{jobid}_{benchmark_name}_Power")
+    # Get SLURM_STEP_ID if available; otherwise, use a fallback string.
+    step_id = os.environ.get("SLURM_STEP_ID", "nostep")
+    output_dir = Path(f"{jobid}_{benchmark_name}_Power_{step_id}")
     os.makedirs(output_dir, exist_ok=True)
     return output_dir
 
 def take_snapshot(label, benchmark_name=None):
-    jobid = os.environ.get('SLURM_JOBID', 'local_job')
     nodeid = os.environ.get('SLURM_NODEID', '0')
     hostname = os.uname().nodename
+    jobid = os.environ.get('SLURM_JOBID', 'local_job')
     output_dir = create_output_dir(jobid, benchmark_name)
     snapshot_file = output_dir / f"{nodeid}_snapshot_{label}.json"
     
