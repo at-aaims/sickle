@@ -40,6 +40,7 @@ parser.add_argument('--arch', type=str, default='fcn_sst', choices=archs, help='
 parser.add_argument('--bins', type=int, default=100, help='Number of bins to represent PDFs')
 parser.add_argument('-b', '--batch', type=int, default=32, help='batch size')
 parser.add_argument('-e', '--epochs', type=int, default=5, help='number of epochs')
+parser.add_argument('--shuffle', action='store_true', help='Shuffle data before training')
 parser.add_argument('--hybrid', type=float, default=1, help='hybrid maxent+random sampling approach')
 parser.add_argument('-nn', '--knn', type=int, default=0, help='use knn to include neighbars')
 parser.add_argument('-nc', '--num_clusters', type=int, default=10, help='number of clusters')
