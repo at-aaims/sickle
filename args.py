@@ -65,7 +65,8 @@ parser.add_argument('--window', type=int, default=2, help='time window sequence 
 parser.add_argument('--write_interval', type=int, default=100, help='OpenFOAM write interval')
 parser.add_argument('--viz', action='store_true', default=False, help='Output .pvd file for visualization in ParaView')
 parser.add_argument("--mxp_mode", default="none", choices=["none", "amp"], help="Specify how to use mixed precision for training and inference")
-parser.add_argument("--precision", default="fp32", help="Precision to be used in case mxp_mode is enabled")
+choices = ['fp32', 'int8', 'fp16', 'bf16', 'fp64']
+parser.add_argument("--precision", default=choices[0], help="Precision to be used in case mxp_mode is enabled")
 
 # SST/GESTS data args
 parser.add_argument('--nbytes', type=int, default=4, help='how many bytes used for each number')
