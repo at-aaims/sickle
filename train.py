@@ -15,8 +15,8 @@ import importlib
 from args import args
 from constants import *
 from dataloaders import create_sequences
-from energy import take_snapshot, report_snapshots, aggregate_reports
-from helpers import scale, compute_memory
+from energy import EnergyMonitor
+from helpers import scale, compute_memory, get_calling_filename
 from plotting import plot_ML_outputs, plot_learning_curve
 
 outfilename = f"subsampled_{args.fileprefix}.npz"
@@ -270,15 +270,16 @@ def main():
     #main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test)
 
     trainer = Trainer(args, X_train, Y_train, X_test, Y_test)
-    take_snapshot('start') # energy benchmark
+    em = EnergyMonitor(get_calling_filename())
+    em.start()
     trainer.training_loop()
-    take_snapshot('end') 
+    em.end()
     trainer.eval()
 
     # Only the rank 0 process should perform aggregation.
     if trainer.rank == 0:
         print("Aggregating energy reports across nodes:")
-        aggregate_reports()
+        em.aggregate()
 
 
 if __name__ == "__main__":

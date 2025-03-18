@@ -1,4 +1,5 @@
 import importlib
+import inspect
 import numpy as np
 import os
 import time
@@ -120,6 +121,16 @@ def check_and_create_dirs(directory):
     """ Checks if a directory exists, and creates it if it doesn't.  """
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+def get_calling_filename():
+    current_module = os.path.basename(__file__)
+    for frame in inspect.stack()[1:]:
+        caller_filename = os.path.basename(frame.filename)
+        if caller_filename != current_module:
+            # Return the base name without the extension
+            return os.path.splitext(caller_filename)[0]
+    # Fallback if all frames come from the current module
+    return os.path.splitext(current_module)[0]
 
 def estimate_memory(shape, dtype):
     """
