@@ -30,4 +30,3 @@ train:
   target: p_full
   window: 1
   arch: MLP_transformer
-  sequence: true

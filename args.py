@@ -130,7 +130,7 @@ else:
 if args.method == "full": 
     args.num_samples = args.nxsl*args.nysl*args.nzsl 
 
-if args.arch in ['lstm', 'transformer', 'MLP_transformer', 'CNN_transformer']: 
+if args.arch in ['lstm', 'transformer', 'MLP_transformer', 'CNN_transformer'] and args.window > 1:
     args.sequence = True
 
 if args.arch == 'lstm' and (args.overlap > args.window - 1 or args.overlap < 0):

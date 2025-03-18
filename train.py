@@ -224,9 +224,13 @@ def main():
     # Convert timeseries to sequences
     if args.sequence:
         X, Y = create_sequences(X, Y, args)
-    else:
-        Y = np.squeeze(Y)
-    print(f"After sequence X: {X.shape}; Y: {Y.shape}", flush=True)
+        print(f"After sequence X: {X.shape}; Y: {Y.shape}", flush=True)
+
+    # Handle single timestep cases
+    if len(X.shape) == 3:
+        X = np.expand_dims(X, axis=1)
+    if len(Y.shape) == 5:
+        Y = np.expand_dims(Y, axis=1)
 
     # Transpose shape of X and Y to be [B,T,C,Samples] and [B,T,C,H,W,D]
     if args.method == "full":
