@@ -11,7 +11,7 @@
 
 ### Setup python environment
 
-source /lustre/orion/gen150/world-shared/sickle/venv/pyt/bin/activate
+. environment
 
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
 mkdir -p $RUNDIR "$RUNDIR/snapshots" "$RUNDIR/plots"
@@ -32,24 +32,6 @@ time srun -N $SLURM_NNODES -n56 python -u $SRC/subsample-mpi.py $CASE \
                            --output_dir $RUNDIR/snapshots >& $RUNDIR/subsample.out
 
 ### TRAINING
-
-# Variables for DDP
-WORLD_SIZE=$((SLURM_NTASKS))
-NODE_RANK=$SLURM_NODEID
-export MASTER_ADDR=$(hostname -i)
-export NCCL_SOCKET_IFNAME=hsn0
-export MASTER_PORT=3442
-export PYTORCH_ROCM_ARCH=gfx90a
-
-# Needed to bypass MIOpen, Disk I/O Errors
-export MIOPEN_USER_DB_PATH="/tmp/my-miopen-cache"
-export MIOPEN_CUSTOM_CACHE_DIR=${MIOPEN_USER_DB_PATH}
-rm -rf ${MIOPEN_USER_DB_PATH}
-mkdir -p ${MIOPEN_USER_DB_PATH}
-
-echo "World Size: $WORLD_SIZE, Node Rank: $NODE_RANK, Master Addr: $MASTER_ADDR, Master Port: $MASTER_PORT"
-
-module load rocm/6.3.1 libfabric/1.22.0
 
 time srun -N $SLURM_NNODES --ntasks-per-node=8 python -u $SRC/train.py --plot \
                            --output_dir $RUNDIR/snapshots $CASE >& $RUNDIR/train.out
