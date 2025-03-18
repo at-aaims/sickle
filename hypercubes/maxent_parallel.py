@@ -3,6 +3,7 @@ Parallel maxEnt-based hypercube selection for SST data.
 """
 #from mpi4py import MPI
 import numpy as np
+import time
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics.pairwise import pairwise_distances_argmin
 from scipy.stats import entropy
@@ -18,6 +19,7 @@ from collections import defaultdict
 # Broadcast the seed to all ranks so they use the same random state
 #seed_value = comm.bcast(seed_value, root=0)
 #np.random.seed(seed_value)  # Set the seed for NumPy
+seed_value = 42
 
 def load_data_mpi(comm, loadpath, nx, ny, nz, rank, size, split_axis=0):
     print(f"Entering load_data_mpi, rank {rank}", flush=True)
@@ -25,6 +27,9 @@ def load_data_mpi(comm, loadpath, nx, ny, nz, rank, size, split_axis=0):
         n_features = 1
         nskip = 1
         # Load full dataset on rank 0 (using memmap)
+        print("*** loadpath type:", type(loadpath))
+        print("*** loadpath value:", loadpath)
+        loadpath = loadpath[0]
         data_memmap = np.memmap(loadpath, dtype=np.float32, mode='r', shape=(nz, ny, nx))[::nskip, ::nskip, :-2:nskip]
         # Create a coordinate grid that matches the shape of data_memmap.
         coords = np.indices(data_memmap.shape).transpose(1, 2, 3, 0)
@@ -170,28 +175,39 @@ def mpi_kmeans(local_data, n_clusters, batch_size=10000, n_init=10, max_iter=100
 
     if rank == 0:
         print(f"Parallel (MPI) K-Means Time: {mpi_time:.4f} seconds")
-        return cluster_centers
 
-    return None
+    return cluster_centers
+
+#def compute_local_histograms(local_data, local_labels, n_clusters, num_bins, bin_range):
+#    """
+#    Compute histogram counts for each cluster based on a feature.
+#    
+#    Parameters:
+#        local_data: np.ndarray, shape (N,) - The feature values (e.g., intensity, or any scalar) for each data point.
+#        local_labels: np.ndarray, shape (N,) - Cluster assignments (0 to K-1) for each data point.
+#        n_clusters: int - Total number of clusters.
+#        num_bins: int - # bins in the histogram.
+#        bin_range: tuple, (float, float) - global bin range for histogram
+#           
+#    Returns:
+#       local_histograms: list of np.ndarray - A list (length n_clusters) where each element is a 1D array of histogram counts.
+#    """
+#    local_histograms = [np.zeros(num_bins, dtype=np.int64) for _ in range(n_clusters)]
+#    for feature, label in zip(local_data, local_labels):
+#        counts, _ = np.histogram(feature, bins=num_bins, range=bin_range, density=False)
+#        local_histograms[label] += counts
+#    return local_histograms
 
 def compute_local_histograms(local_data, local_labels, n_clusters, num_bins, bin_range):
-    """
-    Compute histogram counts for each cluster based on a feature.
-    
-    Parameters:
-        local_data: np.ndarray, shape (N,) - The feature values (e.g., intensity, or any scalar) for each data point.
-        local_labels: np.ndarray, shape (N,) - Cluster assignments (0 to K-1) for each data point.
-        n_clusters: int - Total number of clusters.
-        num_bins: int - # bins in the histogram.
-        bin_range: tuple, (float, float) - global bin range for histogram
-           
-    Returns:
-       local_histograms: list of np.ndarray - A list (length n_clusters) where each element is a 1D array of histogram counts.
-    """
-    local_histograms = [np.zeros(num_bins, dtype=np.int64) for _ in range(n_clusters)]
-    for feature, label in zip(local_data, local_labels):
-        counts, _ = np.histogram(feature, bins=num_bins, range=bin_range, density=False)
-        local_histograms[label] += counts
+    local_histograms = []
+    for k in range(n_clusters):
+        # Select all feature values for cluster k.
+        cluster_data = local_data[local_labels == k].flatten()
+        if cluster_data.size > 0:
+            counts, _ = np.histogram(cluster_data, bins=num_bins, range=bin_range, density=False)
+        else:
+            counts = np.zeros(num_bins, dtype=np.int64)
+        local_histograms.append(counts)
     return local_histograms
 
 def reduce_histograms(comm, local_histograms, n_clusters):
@@ -296,55 +312,74 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
 
     # Initialize MPI
     from mpi4py import MPI
-    print("a href", flush=True)
+    print("a here", flush=True)
     comm = MPI.COMM_WORLD
-    print("b href", flush=True)
+    print("b here", flush=True)
     rank = comm.Get_rank()  # Process rank
-    print("c href", flush=True)
+    print("c here", flush=True)
     size = comm.Get_size()  # Total processes
-    print("d href", flush=True)
+    print("d here", flush=True)
     if rank == 0:
         print(f"Total processors: {size}")
-    print("e href", flush=True)
+    print("e here", flush=True)
 
     # Load dataset slice for each MPI rank
     local_data, local_coords = load_data_mpi(comm, loadpath, nx, ny, nz, rank, size)
-    print("f href", flush=True)
+    print("f here", flush=True)
 
     # Start timing for MPI K-Means
     mpi_start_time = MPI.Wtime()
 
     # 0. Parallel k-means using MiniBatchKMeans
     cluster_centers = mpi_kmeans(local_data, n_clusters=n_clusters, batch_size=int(4096/size), n_init=20, max_iter=10, n_iters=10)
+    print("cluster_centers:", cluster_centers)
+    print("type(cluster_centers):", type(cluster_centers))
     cluster_centers = cluster_centers[np.lexsort(tuple(cluster_centers[:, i] for i in range(cluster_centers.shape[1]-1, -1, -1)))]
-    print("g href", flush=True)
+    print("g here", flush=True)
 
     # Stop timing
     mpi_end_time = MPI.Wtime()
     mpi_time = mpi_end_time - mpi_start_time
 
     if rank == 0:
-        print(f"Parallel (MPI) K-Means Time: {mpi_time:.4f} seconds")
-        print(f"Centers: {cluster_centers}")
+        print(f"Parallel (MPI) K-Means Time: {mpi_time:.4f} seconds", flush=True)
+        print(f"Centers: {cluster_centers}", flush=True)
+
+    print("i here", flush=True)
 
     # 1. Compute local data labels
+    tik = time.time()
     local_labels = pairwise_distances_argmin(local_data, cluster_centers)
+    print("Finished pairwise_distances_argmin in", time.time() - tik, "seconds", flush=True) 
 
     # 2. Compute local histograms for each label
-    bin_range = (comm.allreduce(np.min(local_data), op=MPI.MIN), comm.allreduce(np.max(local_data), op=MPI.MAX))
+    start_allreduce = time.time()
+    local_min = np.min(local_data)
+    local_max = np.max(local_data)
+    print("Local min:", local_min, "Local max:", local_max, flush=True)
+    global_min = comm.allreduce(local_min, op=MPI.MIN)
+    global_max = comm.allreduce(local_max, op=MPI.MAX)
+    print("Global min:", global_min, "Global max:", global_max, flush=True)
+    bin_range = (global_min, global_max)
+    print("Allreduce took", time.time() - start_allreduce, "seconds", flush=True)
+    #bin_range = (comm.allreduce(np.min(local_data), op=MPI.MIN), comm.allreduce(np.max(local_data), op=MPI.MAX))
     # print(f"bin_range (rank {rank}): {bin_range}")
     num_bins = 10
     mpi_start_time = MPI.Wtime()
     local_histograms = compute_local_histograms(local_data, local_labels, n_clusters, num_bins, bin_range)
     mpi_end_time = MPI.Wtime()
     mpi_time = mpi_end_time - mpi_start_time
+    print("*** compute_local_histograms took", mpi_time)
+
+    print("j here", flush=True)
     if rank == 0:
-        print(f"local_histograms Time: {mpi_time:.4f} seconds")
-        print(f"local_histograms (rank {rank}): {len(local_histograms)}")
+        print(f"local_histograms Time: {mpi_time:.4f} seconds", flush=True)
+        print(f"local_histograms (rank {rank}): {len(local_histograms)}", flush=True)
 
     # 3. Reduce local histograms to global histogram for all lables
     global_histograms = reduce_histograms(comm, local_histograms, n_clusters)
 
+    print("k here", flush=True)
     # 4. On the root process, compute the probability distributions and node strength of each cluster.
     if rank == 0:
         # Compute probability from counts

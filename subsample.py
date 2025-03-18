@@ -10,6 +10,11 @@ from subsampling import get_subsampler
 from viz import save_vtu
 
 
+if int(os.environ['SLURM_STEP_TASKS_PER_NODE']) > 1:
+    is_parallel = True
+else:
+    is_parallel = False
+
 def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128):
     """Extracts the y-z plane for a given x-index at a specific timestep and feature."""
     data_slice = X[timestep, :, feature_index]
@@ -89,9 +94,9 @@ if __name__ == "__main__":
         save_vtu(X, Y, x, y, z, indices_list, args.output_dir, args.fileprefix)
 
     # Reshape Xout and Yout to 1D or 3D based on args.method and args.field_prediction_type
+    num_timesteps *= args.num_hypercubes
     if args.method == "full":
         Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[-1])
-
     if args.field_prediction_type == FieldPredictionType.FULL:
         Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[-1])
 

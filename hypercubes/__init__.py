@@ -1,7 +1,7 @@
 import numpy as np
 from helpers import check_data
-#from .maxent_hypercubes import maxent_hypercubes
-from .maxent_sequential import maxent_hypercubes
+from .maxent_parallel import maxent_hypercubes
+#from .maxent_sequential import maxent_hypercubes
 
 
 def extract_hypercube_IDs(loadpaths, nbytes, file_shape, cube_shape, method, num_cubes):
