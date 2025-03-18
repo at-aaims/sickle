@@ -7,11 +7,14 @@ import time
 from pathlib import Path
 
 def get_calling_filename():
-    # Get the filename of the caller (one level up in the stack)
-    caller_file = inspect.stack()[1].filename
-    # Extract the basename without extension
-    base_name = os.path.splitext(os.path.basename(caller_file))[0]
-    return base_name
+    current_module = os.path.basename(__file__)
+    for frame in inspect.stack()[1:]:
+        caller_filename = os.path.basename(frame.filename)
+        if caller_filename != current_module:
+            # Return the caller's base name (without extension)
+            return os.path.splitext(caller_filename)[0]
+    # Fallback if all frames are from the current module
+    return current_module
 
 def create_output_dir(jobid, benchmark_name=None):
     """
@@ -22,7 +25,7 @@ def create_output_dir(jobid, benchmark_name=None):
         benchmark_name = get_calling_filename()
     # Get SLURM_STEP_ID if available; otherwise, use a fallback string.
     step_id = os.environ.get("SLURM_STEP_ID", "nostep")
-    output_dir = Path(f"{jobid}_{benchmark_name}_Power_{step_id}")
+    output_dir = Path(f"power_{benchmark_name}_{jobid}_{step_id}")
     os.makedirs(output_dir, exist_ok=True)
     return output_dir
 
