@@ -10,7 +10,7 @@ shared:
   nz: 256
   gravity: z
   plot: true
-  fileprefix: "SST-P1-cubes{num_hypercubes}-{nx}x{ny}x{nz}-ns{num_samples}-window{window}"
+  fileprefix: "SST-P1-H{hypercubes}-cubes{num_hypercubes}-X{method}-ns{num_samples}-window{window}"
 
 subsample:
   hypercubes: uniform
