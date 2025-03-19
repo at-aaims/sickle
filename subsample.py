@@ -5,15 +5,11 @@ from args import args
 from constants import FieldPredictionType
 from dataloaders import load_data
 from helpers import check_and_create_dirs
+from hypercubes import get_hypercube_extractor
 from plotting import plot_samples, plot2d_contour
 from subsampling import get_subsampler
 from viz import save_vtu
 
-
-#if int(os.environ['SLURM_STEP_TASKS_PER_NODE']) > 1:
-#    is_parallel = True
-#else:
-#    is_parallel = False
 
 def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128):
     """Extracts the y-z plane for a given x-index at a specific timestep and feature."""
@@ -74,8 +70,11 @@ if __name__ == "__main__":
     check_and_create_dirs(args.output_dir)
     check_and_create_dirs(args.plot_dir)
 
+    # Define hypercube extraction function
+    extractor = get_hypercube_extractor(args.hypercubes, use_parallel=True)
+
     # Load the data
-    X, Y, cv, x, y, z = load_data(args)
+    X, Y, cv, x, y, z = load_data(args, extractor=extractor)
     num_timesteps = X.shape[0]
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
 

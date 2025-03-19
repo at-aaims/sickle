@@ -4,14 +4,16 @@ import numpy as np
 import re
 from dataloaders import DataLoader
 from helpers import get_1Dgrid, check_data
-from hypercubes import extract_hypercube_IDs
+
 
 class DataLoaderSSTBinary(DataLoader):
 
-    def __init__(self, args):
+    def __init__(self, args, extractor=None):
         super().__init__(args.path, args.dims, args.verbose)
         self.args = args
         self.path = args.path
+        if extractor:
+            self.extract_hypercube_IDs = extractor
 
     def _extract_times(self, file_names):
         pattern = r'_([0-9]+\.[0-9]+)$'
@@ -49,8 +51,8 @@ class DataLoaderSSTBinary(DataLoader):
         file_paths = [os.path.join(self.path, f'{v}_{ts:0.6f}') for v in cv_vars]
         print(f'Finding hypercubes for timestep {ts:0.6f} using vars: {cv_vars}')
 
-        hypercubeIDs = extract_hypercube_IDs(file_paths, self.args.nbytes, dims_full, dims_sl, \
-                                  self.args.hypercubes, self.args.num_hypercubes)
+        hypercubeIDs = self.extract_hypercube_IDs(file_paths, self.args.nbytes, dims_full, dims_sl, \
+                                                  self.args.num_hypercubes)
 
         return hypercubeIDs#, cv_arr
     

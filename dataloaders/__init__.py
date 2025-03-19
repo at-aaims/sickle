@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import importlib
+from helpers import broadcast_large_array
 from constants import FieldPredictionType
 
 # -------------------------------------------------------------------
@@ -22,7 +23,7 @@ class DataLoader:
 # Sequential Loader Factory Function
 # -------------------------------------------------------------------
 
-def load_data(args):
+def load_data(args, **kwargs):
     """
     Factory function to create and use a dataloader instance based on args.dtype.
     
@@ -39,7 +40,7 @@ def load_data(args):
     module = importlib.import_module("dataloaders." + args.dtype)
     DataLoaderClass = module.DataLoader
 
-    dl = DataLoaderClass(args)
+    dl = DataLoaderClass(args, **kwargs)
     x, y, z = dl.load_xyz()
     X, Y, cv = dl.load_multiple_timesteps(
         args.write_interval, args.num_timesteps, target=args.target, cv=args.cluster_var
@@ -49,35 +50,6 @@ def load_data(args):
 # -------------------------------------------------------------------
 # Parallel Loader Factory Function (with subsampling)
 # -------------------------------------------------------------------
-
-def broadcast_large_array(data, comm, root=0):
-    """
-    Broadcast large arrays in chunks.
-    
-    This function first broadcasts the metadata (shape and dtype), then splits the array into
-    chunks that are safely below the INT_MAX limit and broadcasts each chunk.
-    """
-    rank = comm.Get_rank()
-    if rank == root:
-        shape = data.shape
-        dtype = data.dtype
-    else:
-        shape = None
-        dtype = None
-    shape = comm.bcast(shape, root=root)
-    dtype = comm.bcast(dtype, root=root)
-    if rank != root:
-        data = np.empty(shape, dtype=dtype)
-
-    MAX_ELEMENTS = 2**30  # safely below INT_MAX
-    total_elements = np.prod(shape)
-    flat_data = data.ravel()
-
-    for i in range(0, total_elements, MAX_ELEMENTS):
-        end = min(i + MAX_ELEMENTS, total_elements)
-        comm.Bcast([flat_data[i:end], np.dtype(dtype).char], root=root)
-    return data
-
 
 def parallel_load_data(args, subsample=True):
     """

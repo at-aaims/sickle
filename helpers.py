@@ -55,11 +55,13 @@ def verbose_io(func):
 def load(*args, **kwargs):
     return np.load(*args, **kwargs)
 
+
 @verbose_io
 def savez(*args, **kwargs):
     np.save(*args, **kwargs)
 
-# # Function to compute grid coordinates for subdomain/box
+
+# Function to compute grid coordinates for subdomain/box
 def get_1Dgrid(Lh, nx, nxoffset, nxsl, nxskip):
     '''
       Lh: Length of grid dimension
@@ -73,6 +75,7 @@ def get_1Dgrid(Lh, nx, nxoffset, nxsl, nxskip):
     xfi = xin + dx*nxsl*nxskip
     x = np.linspace(xin, xfi, nxsl)
     return x
+
 
 def get_data_memmap(loadpath, nx, ny, nz, nxsl, nysl, nzsl, nxoffset, nyoffset, nzoffset, nxskip, nyskip, nzskip, nbytes):
     # Check data
@@ -100,6 +103,7 @@ def get_data_memmap(loadpath, nx, ny, nz, nxsl, nysl, nzsl, nxoffset, nyoffset, 
     # print(f'Shape of the sub-cube: {datacube.shape}')
     return datacube
 
+
 def check_data(loadpath, nx, ny, nz, nbyte):
   # print('Checking data file...')
   # read in test binary and check number of samples
@@ -117,10 +121,12 @@ def check_data(loadpath, nx, ny, nz, nbyte):
       raise Exception(f'Number of samples counted != actual')
   binary.close()
 
+
 def check_and_create_dirs(directory):
     """ Checks if a directory exists, and creates it if it doesn't.  """
     if not os.path.exists(directory):
         os.makedirs(directory)
+
 
 def get_calling_filename():
     current_module = os.path.basename(__file__)
@@ -131,6 +137,7 @@ def get_calling_filename():
             return os.path.splitext(caller_filename)[0]
     # Fallback if all frames come from the current module
     return os.path.splitext(current_module)[0]
+
 
 def estimate_memory(shape, dtype):
     """
@@ -147,6 +154,7 @@ def estimate_memory(shape, dtype):
     num_elements = np.prod(shape)  # Total number of elements
     bytes_per_element = dtype.itemsize  # Bytes per element
     return num_elements * bytes_per_element  # Total memory in bytes
+
 
 def compute_memory(data):
     """
@@ -171,6 +179,38 @@ def compute_memory(data):
         "MB": total_memory_bytes / (1024**2),
         "GB": total_memory_bytes / (1024**3),
     }
+
+
+def broadcast_large_array(data, comm, root=0):
+    """
+    Broadcast large arrays in chunks.
+
+    This function first broadcasts the metadata (shape and dtype), then splits the array into
+    chunks that are safely below the INT_MAX limit and broadcasts each chunk.
+    """
+    rank = comm.Get_rank()
+    if rank == root:
+        shape = data.shape
+        dtype = data.dtype
+    else:
+        shape = None
+        dtype = None
+    shape = comm.bcast(shape, root=root)
+    dtype = comm.bcast(dtype, root=root)
+    if rank != root:
+        data = np.empty(shape, dtype=dtype)
+
+    MAX_ELEMENTS = 2**30  # safely below INT_MAX
+    total_elements = np.prod(shape)
+
+    # Flatten array for chunking
+    flat_data = data.ravel()
+
+    for i in range(0, total_elements, MAX_ELEMENTS):
+        end = min(i + MAX_ELEMENTS, total_elements)
+        comm.Bcast([flat_data[i:end], np.dtype(dtype).char], root=root)
+
+    return data
 
 
 if __name__ == "__main__":

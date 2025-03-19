@@ -1,47 +1,105 @@
-import numpy as np
 from helpers import check_data
-from .maxent_parallel import maxent_hypercubes
-#from .maxent_sequential import maxent_hypercubes
 
 
-def extract_hypercube_IDs(loadpaths, nbytes, file_shape, cube_shape, method, num_cubes):
-    """ Partition a 3D array into non-overlapping hypercubes. """
+def get_hypercube_extractor(method, **selector_kwargs):
+    """
+    Returns an extractor function that partitions a 3D array into non-overlapping hypercubes
+    and selects a subset based on the specified method.
+    
+    The returned extractor has the signature:
+      extractor(loadpaths, nbytes, file_shape, cube_shape, num_cubes)
+    
+    Supported methods:
+      - 'uniform': Selects the first num_cubes cubes.
+      - 'random': Randomly selects num_cubes cubes.
+      - 'maxent': Uses maxent subsampling. If the keyword "use_parallel" is True,
+                  the parallel implementation is used; otherwise, the sequential one.
+    
+    Example usage:
+    
+        extractor = get_hypercube_extractor('maxent', use_parallel=True)
+        hypercubeIDs = extractor(loadpaths, nbytes, (nx, ny, nz), (hx, hy, hz), num_cubes)
+    
+    Returns:
+      extractor : function
+          A closure that returns a list of selected hypercube IDs.
+    """
+    import numpy as np
 
-    nx, ny, nz = file_shape
-    hx, hy, hz = cube_shape
-
-    for loadpath in loadpaths:
-        check_data(loadpath, nx, ny, nz, nbytes)
-
-    # Compute how many cubes fit in each dimension.
-    num_x = (nx-2) // hx
-    num_y = ny // hy
-    num_z = nz // hz
-
-    indices = []
-    for ix in range(num_x):
-        for iy in range(num_y):
-            for iz in range(num_z):
-                indices.append((ix, iy, iz))
-
-    # If the user has specified to select fewer cubes, apply selection.
-    if num_cubes is not None and num_cubes <= len(indices):
-        if method == 'uniform': 
-            sel_indices = np.arange(num_cubes)
-        elif method == 'random':
-            sel_indices = np.random.choice(len(indices), num_cubes, replace=False)
-        elif method == 'maxent':
-            sampled_subcubes = maxent_hypercubes(loadpaths, nx, ny, nz, hx, hy, hz, 
-                                                n_clusters=10, n_cubes=num_cubes, 
-                                                # note: keep 256 < batch_size < 1024 per core
-                                                # main issue: number of clusters
-                                                batch_size=1024, n_init=20, max_iter=10, n_iters=10)
-            # Convert 3D to 1D
-            sel_indices = np.array([ix + num_x * (iy + num_y * iz) for (ix, iy, iz) in sampled_subcubes])
+    # --- Determine the low-level selector function based on the method ---
+    if method == 'uniform':
+        # Simply take the first num_cubes indices.
+        def selector_func(indices, num_cubes, **kwargs):
+            return np.arange(num_cubes)
+    elif method == 'random':
+        # Randomly select num_cubes indices without replacement.
+        def selector_func(indices, num_cubes, **kwargs):
+            return np.random.choice(len(indices), num_cubes, replace=False)
+    elif method == 'maxent':
+        # Choose the maxent implementation based on the use_parallel flag.
+        use_parallel = selector_kwargs.get("use_parallel", False)
+        if use_parallel:
+            from .maxent_parallel import maxent_hypercubes as maxent_func
         else:
-            raise ValueError("Unknown subsampling method.")
+            from .maxent_sequential import maxent_hypercubes as maxent_func
 
-    hypercubeIDs = [indices[i] for i in sel_indices]
-    print("selected hypercubes:", hypercubeIDs)
+        def selector_func(indices, num_cubes, nx, ny, nz, hx, hy, hz, **kwargs):
+            sampled_subcubes = maxent_func(
+                kwargs["loadpaths"],
+                nx, ny, nz,
+                hx, hy, hz,
+                n_clusters=10,
+                n_cubes=num_cubes,
+                batch_size=1024,
+                n_init=20,
+                max_iter=10,
+                n_iters=10
+            )
+            # Compute grid dimensions for converting 3D subcube coordinates to a 1D index.
+            num_x = (nx - 2) // hx
+            num_y = ny // hy
+            return np.array([
+                ix + num_x * (iy + num_y * iz)
+                for (ix, iy, iz) in sampled_subcubes
+            ])
+    else:
+        raise ValueError(f"Unsupported hypercube selection method: {method}")
 
-    return hypercubeIDs
+    # --- The extractor closure ---
+    def extractor(loadpaths, nbytes, file_shape, cube_shape, num_cubes):
+        nx, ny, nz = file_shape
+        hx, hy, hz = cube_shape
+
+        # Verify data in each file.
+        for loadpath in loadpaths:
+            check_data(loadpath, nx, ny, nz, nbytes)
+
+        # Compute how many cubes fit in each dimension.
+        num_x = (nx - 2) // hx
+        num_y = ny // hy
+        num_z = nz // hz
+
+        # Build a list of all hypercube indices.
+        indices = [(ix, iy, iz)
+                   for ix in range(num_x)
+                   for iy in range(num_y)
+                   for iz in range(num_z)]
+
+        # Determine selected indices.
+        if num_cubes is not None and num_cubes <= len(indices):
+            # Call the pre-determined selector_func.
+            # For 'maxent', additional parameters are passed.
+            sel_indices = selector_func(
+                indices, num_cubes,
+                nx=nx, ny=ny, nz=nz,
+                hx=hx, hy=hy, hz=hz,
+                loadpaths=loadpaths
+            )
+        else:
+            sel_indices = np.arange(len(indices))
+
+        hypercubeIDs = [indices[i] for i in sel_indices]
+        print("selected hypercubes:", hypercubeIDs)
+        return hypercubeIDs
+
+    return extractor

@@ -7,9 +7,11 @@ from args import args
 from constants import FieldPredictionType
 from dataloaders import load_data  # , parallel_load_data
 from energy import EnergyMonitor
-from helpers import check_and_create_dirs, get_calling_filename
+from helpers import check_and_create_dirs, get_calling_filename, broadcast_large_array
+from hypercubes import get_hypercube_extractor
 from subsampling import get_subsampler
 from viz import save_vtu
+
 
 def broadcast_large_array(data, comm, root=0):
     """Broadcast large arrays by chunking."""
@@ -59,8 +61,10 @@ if rank == 0:
     # Ensure output directory
     check_and_create_dirs(args.output_dir)
     check_and_create_dirs(args.plot_dir)
+    # Define hypercube extractor
+    extractor = get_hypercube_extractor(args.hypercubes, use_parallel=False)
     # Load data
-    X, Y, cv, x, y, z = load_data(args)
+    X, Y, cv, x, y, z = load_data(args, extractor=extractor)
     args_to_broadcast = args
 else:
     X = Y = cv = x = y = z = None
