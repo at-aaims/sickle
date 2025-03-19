@@ -36,15 +36,8 @@ def extract_hypercube_IDs(loadpaths, nbytes, file_shape, cube_shape, method, num
                                                 # note: keep 256 < batch_size < 1024 per core
                                                 # main issue: number of clusters
                                                 batch_size=1024, n_init=20, max_iter=10, n_iters=10)
-            print("*** sampled_subcubes:", sampled_subcubes)
             # Convert 3D to 1D
             sel_indices = np.array([ix + num_x * (iy + num_y * iz) for (ix, iy, iz) in sampled_subcubes])
-            print("*** sel_indices:", sel_indices)
-            print("details:")
-            for (ix, iy, iz) in sampled_subcubes:
-                print(ix, iy, iz, num_x, num_y, ix + num_x * (iy + num_y * iz))
-            print("Length of indices:", len(indices))
-            print("Max index in sel_indices:", max(sel_indices))
         else:
             raise ValueError("Unknown subsampling method.")
 

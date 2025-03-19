@@ -27,12 +27,10 @@ def load_data_mpi(comm, loadpath, nx, ny, nz, rank, size, split_axis=0):
         n_features = 1
         nskip = 1
         # Load full dataset on rank 0 (using memmap)
-        print("*** loadpath type:", type(loadpath))
-        print("*** loadpath value:", loadpath)
         loadpath = loadpath[0]
         data_memmap = np.memmap(loadpath, dtype=np.float32, mode='r', shape=(nz, ny, nx))[::nskip, ::nskip, :-2:nskip]
+        data_memmap = data_memmap.transpose(2, 1, 0)  # now shape is (nx, ny, nz)
         # Create a coordinate grid that matches the shape of data_memmap.
-        #coords = np.indices(data_memmap.shape).transpose(1, 2, 3, 0)
         coords = np.indices(data_memmap.shape).transpose(1, 2, 3, 0)
         
         # Split data and coordinates along the desired axis.
@@ -180,26 +178,6 @@ def mpi_kmeans(local_data, n_clusters, batch_size=10000, n_init=10, max_iter=100
 
     return cluster_centers
 
-#def compute_local_histograms(local_data, local_labels, n_clusters, num_bins, bin_range):
-#    """
-#    Compute histogram counts for each cluster based on a feature.
-#    
-#    Parameters:
-#        local_data: np.ndarray, shape (N,) - The feature values (e.g., intensity, or any scalar) for each data point.
-#        local_labels: np.ndarray, shape (N,) - Cluster assignments (0 to K-1) for each data point.
-#        n_clusters: int - Total number of clusters.
-#        num_bins: int - # bins in the histogram.
-#        bin_range: tuple, (float, float) - global bin range for histogram
-#           
-#    Returns:
-#       local_histograms: list of np.ndarray - A list (length n_clusters) where each element is a 1D array of histogram counts.
-#    """
-#    local_histograms = [np.zeros(num_bins, dtype=np.int64) for _ in range(n_clusters)]
-#    for feature, label in zip(local_data, local_labels):
-#        counts, _ = np.histogram(feature, bins=num_bins, range=bin_range, density=False)
-#        local_histograms[label] += counts
-#    return local_histograms
-
 def compute_local_histograms(local_data, local_labels, n_clusters, num_bins, bin_range):
     local_histograms = []
     for k in range(n_clusters):
@@ -341,28 +319,20 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
         print(f"Centers: {cluster_centers}", flush=True)
 
     # 1. Compute local data labels
-    tik = time.time()
     local_labels = pairwise_distances_argmin(local_data, cluster_centers)
-    print("Finished pairwise_distances_argmin in", time.time() - tik, "seconds", flush=True) 
 
     # 2. Compute local histograms for each label
     start_allreduce = time.time()
     local_min = np.min(local_data)
     local_max = np.max(local_data)
-    print("Local min:", local_min, "Local max:", local_max, flush=True)
     global_min = comm.allreduce(local_min, op=MPI.MIN)
     global_max = comm.allreduce(local_max, op=MPI.MAX)
-    print("Global min:", global_min, "Global max:", global_max, flush=True)
     bin_range = (global_min, global_max)
-    print("Allreduce took", time.time() - start_allreduce, "seconds", flush=True)
-    #bin_range = (comm.allreduce(np.min(local_data), op=MPI.MIN), comm.allreduce(np.max(local_data), op=MPI.MAX))
-    # print(f"bin_range (rank {rank}): {bin_range}")
     num_bins = 10
     mpi_start_time = MPI.Wtime()
     local_histograms = compute_local_histograms(local_data, local_labels, n_clusters, num_bins, bin_range)
     mpi_end_time = MPI.Wtime()
     mpi_time = mpi_end_time - mpi_start_time
-    print("*** compute_local_histograms took", mpi_time)
 
     if rank == 0:
         print(f"local_histograms Time: {mpi_time:.4f} seconds", flush=True)
