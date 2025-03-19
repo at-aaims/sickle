@@ -21,46 +21,71 @@ seed_value = comm.bcast(seed_value, root=0)
 np.random.seed(seed_value)  # Set the seed for NumPy
 
 
-def load_data_mpi(comm, loadpath, nx, ny, nz, rank, size, split_axis=0):
-    print(f"Entering load_data_mpi, rank {rank}", flush=True)
+def load_data_mpi(comm, loadpaths, nx, ny, nz, rank, size, split_axis=0, nskip=1):
+    """
+    Load a full 4D dataset (stacked along a new axis) in parallel via MPI.
+    The dataset is loaded on rank 0 from a list of loadpaths, then split along the specified axis.
+    
+    Parameters:
+        comm: MPI communicator.
+        loadpaths: list of str
+            List of file paths.
+        nx, ny, nz: int
+            Dimensions of the full data cube (before transpose).
+        rank: int
+            Rank of the current MPI process.
+        size: int
+            Total number of MPI processes.
+        split_axis: int, optional
+            Axis along which to split the data (default 0).
+        nskip: int, optional
+            Stride when reading the memmap (default 1).
+
+    Returns:
+        local_data: np.ndarray
+            Flattened local data with shape (n_voxels, n_features) where n_features equals the number
+            of load paths.
+        local_coords: np.ndarray
+            Flattened coordinate array with shape (n_voxels, 3).
+    """
     if rank == 0:
-        n_features = 1
-        nskip = 1
-        # Load full dataset on rank 0 (using memmap)
-        loadpath = loadpath[0]
-        data_memmap = np.memmap(loadpath, dtype=np.float32, mode='r', shape=(nz, ny, nx))[::nskip, ::nskip, :-2:nskip]
-        data_memmap = data_memmap.transpose(2, 1, 0)  # now shape is (nx, ny, nz)
-        # Create a coordinate grid that matches the shape of data_memmap.
-        coords = np.indices(data_memmap.shape).transpose(1, 2, 3, 0)
+        # n_features will equal the number of loaded files (channels)
+        data_list = []
+        for path in loadpaths:
+            # Load the data as a memmap; data is originally shaped (nz, ny, nx)
+            data = np.memmap(path, dtype=np.float32, mode='r', shape=(nz, ny, nx))[::nskip, ::nskip, :-2:nskip]
+            # Transpose to reorder dimensions: now shape becomes (nx, ny, nz)
+            data = data.transpose(2, 1, 0)
+            data_list.append(data)
         
-        # Split data and coordinates along the desired axis.
-        # Convert the splits to regular NumPy arrays (copy) to ensure they are picklable.
-        split_data = [np.array(part) for part in np.array_split(data_memmap, size, axis=split_axis)]
+        # Stack the 3D arrays along a new axis (the 4th dimension)
+        data_4d = np.stack(data_list, axis=-1)  # shape: (nx, ny, nz, n_loads)
+        n_features = data_4d.shape[-1]
+        
+        # Create a coordinate grid based on the shape of one loaded 3D array.
+        # np.indices returns an array of shape (3, nx, ny, nz); transpose to (nx, ny, nz, 3)
+        coords = np.indices(data_list[0].shape).transpose(1, 2, 3, 0)
+        
+        # Split the 4D data and the coordinate grid along the specified axis.
+        # Convert the splits to regular NumPy arrays to ensure they are picklable.
+        split_data = [np.array(part) for part in np.array_split(data_4d, size, axis=split_axis)]
         split_coords = [np.array(part) for part in np.array_split(coords, size, axis=split_axis)]
     else:
         split_data = None
         split_coords = None
         n_features = None
 
-    print(f"Rank {rank} about to call bcast for n_features", flush=True)
-    # Broadcast n_features so that all processes know its value.
+    # Broadcast n_features to all processes.
     n_features = comm.bcast(n_features, root=0)
-    print(f"Rank {rank} finished bcast for n_features, got: {n_features}", flush=True)
-    
-    # Debug print: confirm that all processes reached the scatter.
-    print(f"Rank {rank} reached scatter for data", flush=True)
-    
+
     # Scatter the data slices from rank 0 to all processes.
-    local_data = comm.scatter(split_data, root=0).reshape(-1, n_features)
-    
-    # Debug print: confirm data scatter completed.
-    print(f"Rank {rank} completed scatter for data; local_data shape: {local_data.shape}", flush=True)
-    
+    local_data = comm.scatter(split_data, root=0)
+    # Flatten the local data; each row will have n_features (i.e. one value per loaded file)
+    local_data = local_data.reshape(-1, n_features)
+
     # Scatter the coordinate slices.
-    local_coords = comm.scatter(split_coords, root=0).reshape(-1, 3)
-    
-    # Debug print: confirm coordinates scatter completed.
-    print(f"Rank {rank} completed scatter for coords; local_coords shape: {local_coords.shape}", flush=True)
+    local_coords = comm.scatter(split_coords, root=0)
+    local_coords = local_coords.reshape(-1, 3)
 
     return local_data, local_coords
 
