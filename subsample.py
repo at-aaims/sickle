@@ -10,10 +10,10 @@ from subsampling import get_subsampler
 from viz import save_vtu
 
 
-if int(os.environ['SLURM_STEP_TASKS_PER_NODE']) > 1:
-    is_parallel = True
-else:
-    is_parallel = False
+#if int(os.environ['SLURM_STEP_TASKS_PER_NODE']) > 1:
+#    is_parallel = True
+#else:
+#    is_parallel = False
 
 def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128):
     """Extracts the y-z plane for a given x-index at a specific timestep and feature."""

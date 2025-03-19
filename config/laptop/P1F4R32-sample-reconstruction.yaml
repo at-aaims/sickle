@@ -4,7 +4,7 @@ shared:
   noseed: true
   input_vars: [u, v, w, r]
   output_vars: [p]
-  cluster_var: pv
+  cluster_var: [p, pv]
   nx: 514
   ny: 512
   nz: 256
@@ -13,6 +13,8 @@ shared:
   fileprefix: "{nxsl}x{nysl}x{nzsl}-ns{num_samples}-window{window}"
 
 subsample:
+  hypercubes: maxent
+  num_hypercubes: 32
   method: maxent # random or uips
   path: "~/data/P1F4R32_nx512ny512nz256_6vars/"
   num_samples: 5000

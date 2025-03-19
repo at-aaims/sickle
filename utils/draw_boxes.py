@@ -76,7 +76,7 @@ for i in range(nx):
 # 4) Randomly select 128 cubes to show
 # ----------------------------------------------------------------------------
 random.seed(42)  # For reproducibility
-selected_positions = random.sample(all_positions, 128)
+selected_positions = random.sample(all_positions, 64)
 
 # ----------------------------------------------------------------------------
 # 5) Plot everything

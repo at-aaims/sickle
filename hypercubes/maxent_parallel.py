@@ -1,7 +1,7 @@
 """
 Parallel maxEnt-based hypercube selection for SST data.
 """
-#from mpi4py import MPI
+from mpi4py import MPI
 import numpy as np
 import time
 from sklearn.cluster import MiniBatchKMeans
@@ -9,17 +9,17 @@ from sklearn.metrics.pairwise import pairwise_distances_argmin
 from scipy.stats import entropy
 from collections import defaultdict
 
-#comm = MPI.COMM_WORLD
-#rank = comm.Get_rank()
-#if rank == 0:
-#    seed_value = np.random.randint(0, 1000000)
-#else:
-#    seed_value = None
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+if rank == 0:
+    seed_value = np.random.randint(0, 1000000)
+else:
+    seed_value = None
 
 # Broadcast the seed to all ranks so they use the same random state
-#seed_value = comm.bcast(seed_value, root=0)
-#np.random.seed(seed_value)  # Set the seed for NumPy
-seed_value = 42
+seed_value = comm.bcast(seed_value, root=0)
+np.random.seed(seed_value)  # Set the seed for NumPy
+
 
 def load_data_mpi(comm, loadpath, nx, ny, nz, rank, size, split_axis=0):
     print(f"Entering load_data_mpi, rank {rank}", flush=True)
@@ -32,6 +32,7 @@ def load_data_mpi(comm, loadpath, nx, ny, nz, rank, size, split_axis=0):
         loadpath = loadpath[0]
         data_memmap = np.memmap(loadpath, dtype=np.float32, mode='r', shape=(nz, ny, nx))[::nskip, ::nskip, :-2:nskip]
         # Create a coordinate grid that matches the shape of data_memmap.
+        #coords = np.indices(data_memmap.shape).transpose(1, 2, 3, 0)
         coords = np.indices(data_memmap.shape).transpose(1, 2, 3, 0)
         
         # Split data and coordinates along the desired axis.
@@ -164,7 +165,8 @@ def mpi_kmeans(local_data, n_clusters, batch_size=10000, n_init=10, max_iter=100
         # Normalize by number of processes
         cluster_centers = global_centers / size
 
-        if rank == 0 and i % (n_iters // 5) == 0:  # Print progress every few iterations
+        #if rank == 0 and i % (n_iters // 5) == 0:  # Print progress every few iterations
+        if rank == 0: # and i % (n_iters // 5) == 0:  # Print progress every few iterations
             print(f"Iteration {i+1}/{n_iters} - Synchronizing cluster centers...")
 
     comm.Barrier()  # Ensure all ranks finish
@@ -312,20 +314,14 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
 
     # Initialize MPI
     from mpi4py import MPI
-    print("a here", flush=True)
     comm = MPI.COMM_WORLD
-    print("b here", flush=True)
     rank = comm.Get_rank()  # Process rank
-    print("c here", flush=True)
     size = comm.Get_size()  # Total processes
-    print("d here", flush=True)
     if rank == 0:
         print(f"Total processors: {size}")
-    print("e here", flush=True)
 
     # Load dataset slice for each MPI rank
     local_data, local_coords = load_data_mpi(comm, loadpath, nx, ny, nz, rank, size)
-    print("f here", flush=True)
 
     # Start timing for MPI K-Means
     mpi_start_time = MPI.Wtime()
@@ -335,7 +331,6 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
     print("cluster_centers:", cluster_centers)
     print("type(cluster_centers):", type(cluster_centers))
     cluster_centers = cluster_centers[np.lexsort(tuple(cluster_centers[:, i] for i in range(cluster_centers.shape[1]-1, -1, -1)))]
-    print("g here", flush=True)
 
     # Stop timing
     mpi_end_time = MPI.Wtime()
@@ -344,8 +339,6 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
     if rank == 0:
         print(f"Parallel (MPI) K-Means Time: {mpi_time:.4f} seconds", flush=True)
         print(f"Centers: {cluster_centers}", flush=True)
-
-    print("i here", flush=True)
 
     # 1. Compute local data labels
     tik = time.time()
@@ -371,7 +364,6 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
     mpi_time = mpi_end_time - mpi_start_time
     print("*** compute_local_histograms took", mpi_time)
 
-    print("j here", flush=True)
     if rank == 0:
         print(f"local_histograms Time: {mpi_time:.4f} seconds", flush=True)
         print(f"local_histograms (rank {rank}): {len(local_histograms)}", flush=True)
@@ -379,7 +371,6 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
     # 3. Reduce local histograms to global histogram for all lables
     global_histograms = reduce_histograms(comm, local_histograms, n_clusters)
 
-    print("k here", flush=True)
     # 4. On the root process, compute the probability distributions and node strength of each cluster.
     if rank == 0:
         # Compute probability from counts
