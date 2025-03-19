@@ -10,7 +10,7 @@ except ImportError:
 
 class DataLoaderOF(DataLoader):
 
-    def __init__(self, args):
+    def __init__(self, args, **kwargs):
         super().__init__(args.path, args.dims, args.verbose)
 
     def load_forces(self, write_interval=100):

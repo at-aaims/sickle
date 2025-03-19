@@ -7,7 +7,7 @@ from dataloaders import DataLoader
 
 class GESTSDataLoader(DataLoader):
 
-    def __init__(self, args):
+    def __init__(self, args, **kwargs):
         super().__init__(args.path, dims=args.dims)
         self.args = args
         self.path = args.path

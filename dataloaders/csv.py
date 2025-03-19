@@ -5,7 +5,8 @@ from dataloaders import DataLoader
 
 class DataLoaderCSV(DataLoader):
     
-    def __init__(self, args, verbose=False, prefix='cylinder_t', zwidth=4, dims=2):
+    #def __init__(self, args, extractor=None, verbose=False, prefix='cylinder_t', zwidth=4, dims=2):
+    def __init__(self, args, **kwargs):
         super().__init__(args.path, args.dims, args.verbose)
         self.prefix = prefix
         self.zwidth = zwidth
