@@ -9,6 +9,9 @@
 #SBATCH -o /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
 #SBATCH -e /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
 
+# Setup environment
+. environment
+
 # Define the list of cases
 CASES=("P1-Xmaxent-Hmaxent-32" \
        "P1-Xrandom-Hrandom-32" \
@@ -19,6 +22,8 @@ CASES=("P1-Xmaxent-Hmaxent-32" \
 
 # Define the run directory and source path
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
+mkdir -p $RUNDIR "$RUNDIR/snapshots" "$RUNDIR/plots"
+
 SRC="/lustre/orion/proj-shared/gen150/dsml/sickle"
 
 # Copy all case files to the run directory
@@ -29,7 +34,7 @@ done
 
 # Copy the slurm.sh script for reproducibility
 echo "Copying slurm.sh to $RUNDIR"
-cp slurm.sh "$RUNDIR"
+cp "${BASH_SOURCE[0]}" "$RUNDIR"
 
 # Change directory to the run directory once
 cd "$RUNDIR" || exit
