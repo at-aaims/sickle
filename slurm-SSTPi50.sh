@@ -5,7 +5,7 @@
 ##SBATCH -p batch  # partition
 ##SBATCH -q debug
 #SBATCH -N 1
-#SBATCH -t 04:00:00
+#SBATCH -t 06:00:00
 #SBATCH -o /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
 #SBATCH -e /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
 
