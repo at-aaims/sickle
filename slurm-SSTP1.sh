@@ -7,7 +7,7 @@
 #SBATCH -N 1
 #SBATCH -t 04:00:00
 #SBATCH -o /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
-#SBATCH -j oe
+#SBATCH -e /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
 
 # Define the list of cases
 CASES=("P1-Xmaxent-Hmaxent-32" \
