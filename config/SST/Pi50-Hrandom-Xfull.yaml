@@ -10,12 +10,12 @@ shared:
   nz: 37632
   gravity: y
   plot: true
-  fileprefix: "SST-P50-cubes{num_hypercubes}-{nx}x{ny}x{nz}-ns{num_samples}-window{window}"
+  fileprefix: "SST-Pi50-H{hypercubes}-cubes{num_hypercubes}-X{method}-ns{num_samples}-window{window}"
 
 subsample:
   hypercubes: random
   num_hypercubes: 7
-  method: random # random or uips
+  method: full # random or uips
   path: /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/PiF050Gn0050/
   num_samples: 1000
   num_clusters: 20
@@ -24,10 +24,10 @@ subsample:
   nzsl: 32
 
 train:
-  epochs: 100
+  epochs: 1000
   batch: 16
   patience: 100
   target: p_full
   window: 1
-  arch: MLP_transformer
+  arch: CNN_transformer
   sequence: true
