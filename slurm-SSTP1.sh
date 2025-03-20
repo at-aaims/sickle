@@ -10,7 +10,12 @@
 #SBATCH -j oe
 
 # Define the list of cases
-CASES=("P1-Xmaxent-Hmaxent-32" "P1-Xrandom-Hrandom-32" "P1-Xrandom-Hfull-32" "P1-Xuips-Hrandom-32" "P1-Xmaxent-Hrandom-32" "P1-Xrandom-Hmaxent-32")
+CASES=("P1-Xmaxent-Hmaxent-32" \
+       "P1-Xrandom-Hrandom-32" \
+       "P1-Xrandom-Hfull-32" \
+       "P1-Xuips-Hrandom-32" \
+       "P1-Xmaxent-Hrandom-32" \
+       "P1-Xrandom-Hmaxent-32")
 
 # Define the run directory and source path
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
