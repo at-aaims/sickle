@@ -274,17 +274,19 @@ def main():
     #main_worker(rank, world_size, args, X_train, Y_train, X_test, Y_test)
 
     trainer = Trainer(args, X_train, Y_train, X_test, Y_test)
-    em = EnergyMonitor(get_calling_filename())
-    em.start()
-    trainer.training_loop()
-    em.end()
-    trainer.eval()
 
-    # Only the rank 0 process should perform aggregation.
     if trainer.rank == 0:
+        em = EnergyMonitor(get_calling_filename())
+        em.start()
+
+    trainer.training_loop()
+
+    if trainer.rank == 0:
+        em.end()
         print("Aggregating energy reports across nodes:")
         em.aggregate()
 
+    trainer.eval()
 
 if __name__ == "__main__":
     main()
