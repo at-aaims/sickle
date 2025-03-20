@@ -14,11 +14,11 @@
 
 # Define the list of cases
 CASES=("P1-Hmaxent-Xmaxent-32" \
-       "P1-Hrandom-Xrandom-32" \
-       "P1-Hrandom-Xfull-32" \
-       "P1-Hrandom-Xuips-32" \
+       "P1-Hmaxent-Xrandom-32" \
+       "P1-Hrandom-Xfull" \
        "P1-Hrandom-Xmaxent-32" \
-       "P1-Hmaxent-Xrandom-32")
+       "P1-Hrandom-Xrandom-32" \
+       "P1-Hrandom-Xuips-32")
 
 # Define the run directory and source path
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
