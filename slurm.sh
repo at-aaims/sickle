@@ -7,7 +7,7 @@
 #SBATCH -N 1
 #SBATCH -t 04:00:00
 #SBATCH -o /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
-#SBATCH -e /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.err
+#SBATCH -e /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
 
 ### Setup python environment
 
