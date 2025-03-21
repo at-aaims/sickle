@@ -47,7 +47,7 @@ parser.add_argument('-nc', '--num_clusters', type=int, default=10, help='number 
 parser.add_argument('-ns', '--num_samples', type=int, default=100, help='number of subsamples')
 parser.add_argument('--num_timesteps', type=int, default=100, help='OpenFOAM number of timestamps')
 parser.add_argument('--path', type=str, default='./data', help='path to data')
-parser.add_argument('--patience', type=int, default=5, help='number epochs for early stopping')
+parser.add_argument('--patience', type=int, default=20, help='number epochs for early stopping')
 parser.add_argument('--plot', action='store_true', default=False, help='show plots')
 parser.add_argument('--noseed', action='store_true', default=False, help='don\'t use random number seed')
 choices = ['StandardScaler', 'MinMaxScaler', 'PowerTransformer', 'None']

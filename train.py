@@ -25,6 +25,15 @@ prec_dict = {"int8": torch.int8,
              "fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float,
              "fp64": torch.float64}
 
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # for multi-GPU
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False  # may slow down training, but ensures determinism
+
 class NoContext:
     def __enter__(self):
         return None
@@ -106,13 +115,11 @@ class Trainer:
     def training_loop(self):
 
         # Define optimizer and loss function
-        #optimizer = optim.Adam(self.model.parameters(), lr=0.5)
-        optimizer = optim.Adam(self.model.parameters(), lr=1e-3)
+        optimizer = optim.Adam(self.model.parameters(), lr=0.5)
 
         # Create a scheduler that monitors the validation loss
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            #optimizer, mode='min', factor=0.5, patience=args.patience, verbose=True, threshold=1e-4
-            optimizer, mode='min', factor=0.5, patience=100, verbose=True, threshold=1e-4
+            optimizer, mode='min', factor=0.5, patience=args.patience, verbose=True, threshold=1e-4
         )
 
         criterion = nn.MSELoss()
@@ -210,6 +217,9 @@ def main():
     """
     Main function to initialize data, parse arguments, and start the DDP training.
     """
+    # Set the random seed
+    set_seed(42) 
+
     # Preprocess data
     data = np.load(os.path.join(args.output_dir, outfilename))
 

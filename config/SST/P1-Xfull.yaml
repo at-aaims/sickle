@@ -25,7 +25,6 @@ subsample:
 train:
   epochs: 10
   batch: 4
-  patience: 100
   target: p_full
   window: 2
   arch: CNN_transformer

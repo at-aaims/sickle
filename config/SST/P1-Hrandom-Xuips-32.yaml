@@ -24,8 +24,7 @@ subsample:
 
 train:
   epochs: 100
-  batch: 4
-  patience: 100
+  batch: 16
   target: p_full
   window: 2
   arch: MLP_transformer
