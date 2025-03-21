@@ -1,19 +1,20 @@
 import os
+import importlib
+import numpy as np
+import random
 import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.amp
+
 from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.data.distributed import DistributedSampler
-import torch.distributed as dist
-import torch.amp
-import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, PowerTransformer
-import importlib
 
 from args import args
-from constants import *
+from constants import FieldPredictionType
 from dataloaders import create_sequences
 from energy import EnergyMonitor
 from helpers import scale, compute_memory, get_calling_filename
