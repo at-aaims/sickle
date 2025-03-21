@@ -4,6 +4,7 @@ import os
 from args import args 
 from constants import FieldPredictionType
 from dataloaders import load_data
+from energy import EnergyMonitor
 from helpers import check_and_create_dirs
 from hypercubes import get_hypercube_extractor
 from plotting import plot_samples, plot2d_contour
@@ -88,7 +89,11 @@ if __name__ == "__main__":
         subsampler = get_subsampler(X, args)
 
     # Perform subsampling
+    em = EnergyMonitor(get_calling_filename())
+    em.start()
     Xout, Yout, indices_list = subsample_data(X, Y, x, y, z, subsampler, args)
+    em.end()
+    em.aggregate()
     print(f"Xout: {Xout.shape}; Yout: {Yout.shape}")
 
     # Save to VTK unstructured format
