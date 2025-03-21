@@ -29,5 +29,5 @@ train:
   patience: 100
   target: p_full
   window: 2
-  arch: CNN_ransformer
+  arch: CNN_transformer
   sequence: true

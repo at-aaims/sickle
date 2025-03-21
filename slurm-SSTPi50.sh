@@ -1,10 +1,8 @@
 #!/bin/bash
 #SBATCH -A STF218
-#SBATCH -J sickle
-#SBATCH -p extended
-##SBATCH -p batch  # partition
-##SBATCH -q debug
-#SBATCH -N 1
+#SBATCH -J sickle-pi50
+#SBATCH -p batch
+#SBATCH -N 150
 #SBATCH -t 06:00:00
 #SBATCH -o /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
 #SBATCH -e /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out

@@ -22,7 +22,10 @@ def subsample_data(X, Y, x, y, z, subsampler, args):
     num_timesteps = X.shape[0]
     print(f"num_timesteps: {num_timesteps}")
 
-    Xout = np.zeros((num_timesteps, args.num_samples, X.shape[2]))
+    if args.method == "full":
+        Xout = np.zeros((num_timesteps, args.num_samples * args.num_hypercubes, X.shape[2]))
+    else:
+        Xout = np.zeros((num_timesteps, args.num_samples, X.shape[2]))
 
     if args.field_prediction_type == FieldPredictionType.GLOBAL:
         Yout = np.zeros((num_timesteps, 1, Y.shape[2]))
@@ -46,7 +49,7 @@ def subsample_data(X, Y, x, y, z, subsampler, args):
 
         for sub_timestep in range(args.window):
             ts = timestep + sub_timestep
-            Xout[ts, :, :] = X[ts, indices, :]
+            Xout[ts, :] = X[ts, indices]
 
             if args.field_prediction_type == FieldPredictionType.GLOBAL:
                 subsampled_Y = Y[ts, :]
@@ -56,10 +59,10 @@ def subsample_data(X, Y, x, y, z, subsampler, args):
                 subsampled_Y = Y[ts, indices, :]
             Yout[ts, :] = subsampled_Y
 
-            if args.plot:
-                if args.method == "full":
-                    yz_plane = extract_yz_plane(Xout, timestep, 3, 0, nx=args.nxsl, ny=args.nysl, nz=args.nzsl)
-                    plot2d_contour(yz_plane, y, z, ts)
+            #if args.plot:
+            #    if args.method == "full":
+            #        yz_plane = extract_yz_plane(Xout, timestep, 3, 0, nx=args.nxsl, ny=args.nysl, nz=args.nzsl)
+            #        plot2d_contour(yz_plane, y, z, ts)
 
     return Xout, Yout, np.array(subsampled_indices_list)
 

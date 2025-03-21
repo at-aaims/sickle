@@ -5,6 +5,16 @@ from .phase_space import PhaseSpaceSubsampler
 from .stratified import StratifiedSubsampler
 from .lhs import LatinHypercubeSubsampler
 
+
+class FullSubsampler:
+    def __init__(self, data, args, **kwargs):
+        # Create an array of all indices; assume data is of shape (features, ...)
+        self.indices = np.arange(data.shape[1])
+    def sample(self, num_samples, timestep):
+        # For the "full" method, simply return all indices
+        return self.indices
+
+
 def get_subsampler(data, args, **kwargs):
     """Factory function to select subsampler based on args.method"""
     if args.method == "maxent":
@@ -18,6 +28,6 @@ def get_subsampler(data, args, **kwargs):
     elif args.method == "lhs":
         return LatinHypercubeSubsampler(data, args)
     elif args.method == "full":
-        return np.arange(data.shape[1])
+        return FullSubsampler(data, args)
     else:
         raise ValueError(f"Unsupported sampling method: {args.method}")
