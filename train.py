@@ -116,7 +116,7 @@ class Trainer:
     def training_loop(self):
 
         # Define optimizer and loss function
-        optimizer = optim.Adam(self.model.parameters(), lr=0.5)
+        optimizer = optim.Adam(self.model.parameters(), lr=0.001)
 
         # Create a scheduler that monitors the validation loss
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
@@ -219,7 +219,7 @@ def main():
     Main function to initialize data, parse arguments, and start the DDP training.
     """
     # Set the random seed
-    set_seed(42) 
+    #set_seed(42) 
 
     # Preprocess data
     data = np.load(os.path.join(args.output_dir, outfilename))
