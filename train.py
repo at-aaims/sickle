@@ -224,9 +224,12 @@ def main():
     # Preprocess data
     data = np.load(os.path.join(args.output_dir, outfilename))
 
-    total_memory = compute_memory(data)
-    print(f"\nTotal Estimated Memory Usage: {total_memory['bytes']} bytes "
-          f"({total_memory['MB']:.2f} MB, {total_memory['GB']:.4f} GB)")
+    try:
+        total_memory = compute_memory(data)
+        print(f"\nTotal Estimated Memory Usage: {total_memory['bytes']} bytes "
+              f"({total_memory['MB']:.2f} MB, {total_memory['GB']:.4f} GB)")
+    except:
+        print("problem computing memory")
 
     X, Y = data['X'], data['Y']
     print(f"X: {X.shape}; Y: {Y.shape}", flush=True) # X: [T, [X,Y,Z]-or-NSAMPLES, C]; Y: [T, [X,Y,Z]-or-NSAMPLES, C]
