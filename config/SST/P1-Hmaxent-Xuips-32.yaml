@@ -23,7 +23,7 @@ subsample:
   nzsl: 32 
 
 train:
-  epochs: 100
+  epochs: 1000
   batch: 16
   target: p_full
   window: 2
