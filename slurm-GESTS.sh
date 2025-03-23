@@ -24,7 +24,7 @@ SRC="/lustre/orion/proj-shared/gen150/dsml/sickle"
 # Copy all case files to the run directory
 for CASE in "${CASES[@]}"; do
     echo "Copying case file: $CASE.yaml"
-    cp "config/GESTS/$CASE.yaml" "$RUNDIR"
+    cp "config/GESTS/2048/$CASE.yaml" "$RUNDIR"
 done
 
 # Copy the slurm.sh script for reproducibility
