@@ -10,7 +10,7 @@ shared:
   nz: 1024
   gravity: z
   plot: true
-  fileprefix: "GESTS-cubes{num_hypercubes}-{nx}x{ny}x{nz}-ns{num_samples}-window{window}"
+  fileprefix: "GESTS-H{hypercubes}-cubes{num_hypercubes}-X{method}-ns{num_samples}-window{window}"
 
 subsample:
   hypercubes: random
