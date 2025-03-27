@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.amp
+import torch.distributed as dist
 
 from torch.utils.data import DataLoader, TensorDataset
 from torch.utils.data.distributed import DistributedSampler
@@ -68,7 +69,7 @@ class Trainer:
         self.to_plot = args.plot
 
         # Initialize the process group
-        torch.distributed.init_process_group("nccl", rank=self.rank, world_size=self.world_size)
+        dist.init_process_group("nccl", rank=self.rank, world_size=self.world_size)
         torch.cuda.set_device(self.rank % torch.cuda.device_count())  # Assign GPU based on rank
 
         # Verify GPU setup
@@ -111,7 +112,7 @@ class Trainer:
             os.makedirs(model_path, exist_ok=True)
             torch.save(self.model.state_dict(), f"{model_path}/{args.fileprefix}_model.pth")
 
-        torch.distributed.destroy_process_group()
+        dist.destroy_process_group()
 
     def training_loop(self):
 
@@ -289,12 +290,14 @@ def main():
 
     trainer = Trainer(args, X_train, Y_train, X_test, Y_test)
 
+    dist.barrier()
     if trainer.rank == 0:
         em = EnergyMonitor(get_calling_filename())
         em.start()
 
     trainer.training_loop()
 
+    dist.barrier()
     if trainer.rank == 0:
         em.end()
         print("Aggregating energy reports across nodes:")
