@@ -13,13 +13,13 @@
 . environment
 
 # Define the list of cases
-CASES=("P1-Hmaxent-Xmaxent-32" \
-       "P1-Hmaxent-Xrandom-32" \
-       "P1-Hmaxent-Xuips-32" \
-       "P1-Hrandom-Xfull" \
-       "P1-Hrandom-Xmaxent-32" \
-       "P1-Hrandom-Xrandom-32" \
-       "P1-Hrandom-Xuips-32")
+CASES=("Hmaxent-Xmaxent-32" \
+       "Hmaxent-Xrandom-32" \
+       "Hmaxent-Xuips-32" \
+       "Hrandom-Xfull" \
+       "Hrandom-Xmaxent-32" \
+       "Hrandom-Xrandom-32" \
+       "Hrandom-Xuips-32")
 
 # Define the run directory and source path
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
@@ -30,7 +30,7 @@ SRC="/lustre/orion/proj-shared/gen150/dsml/sickle"
 # Copy all case files to the run directory
 for CASE in "${CASES[@]}"; do
     echo "Copying case file: $CASE.yaml"
-    cp "config/SST/$CASE.yaml" "$RUNDIR"
+    cp "config/SST/P1/$CASE.yaml" "$RUNDIR"
 done
 
 # Copy the slurm.sh script for reproducibility
