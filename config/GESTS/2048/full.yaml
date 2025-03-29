@@ -17,7 +17,6 @@ subsample:
   num_hypercubes: 1
   method: full
   path: /lustre/orion/tur120/world-shared/daludot/phy_cube_data/2048
-  num_samples: 1638
   num_clusters: 20
   nxsl: 32
   nysl: 32
@@ -29,4 +28,4 @@ train:
   patience: 20
   target: p_full
   window: 1
-  arch: MLP_transformer
+  arch: CNN_transformer
