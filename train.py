@@ -241,26 +241,20 @@ def main():
         X, Y = create_sequences(X, Y, args)
         print(f"After sequence X: {X.shape}; Y: {Y.shape}", flush=True)
 
-    # Handle single timestep cases
-    if len(X.shape) == 3:
-        X = np.expand_dims(X, axis=1)
+    # Expand dims if no time dimension exists.
+    if len(X.shape) in [3, 5]:
+        X = np.expand_dims(X, axis=1)  # X becomes (B, 1, 32, 32, 32, 4)
     if len(Y.shape) == 5:
-        Y = np.expand_dims(Y, axis=1)
+        Y = np.expand_dims(Y, axis=1)  # Y becomes (B, 1, 32, 32, 32, 1)
 
-    # Transpose shape of X and Y to be [B,T,C,Samples] and [B,T,C,H,W,D]
     if args.method == "full":
-        X = X.transpose(0,1,5,2,3,4)
+        # Transpose from (B, 1, 32, 32, 32, 4) to (B, 1, 4, 32, 32, 32)
+        X = X.transpose(0, 1, 5, 2, 3, 4)
+        Y = Y.transpose(0, 1, 5, 2, 3, 4)
     else:
-        X = X.transpose(0,1,3,2)
+        # Other method's transpose for X (and Y if needed) goes here.
+        X = X.transpose(0, 1, 3, 2)
 
-    if args.field_prediction_type == FieldPredictionType.GLOBAL:
-        Y = Y.transpose(0,1,3,2)
-    elif args.field_prediction_type == FieldPredictionType.LOCAL:
-        Y = Y.transpose(0,1,3,2)
-    elif args.field_prediction_type == FieldPredictionType.FULL:
-        Y = Y.transpose(0,1,5,2,3,4)
-    else:
-        raise Exception("Enter a valid `args.target`.")
     print(f"X: {X.shape}; Y: {Y.shape}", flush=True)
 
     # train:val split
