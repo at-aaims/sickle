@@ -14,7 +14,7 @@ SRC="/lustre/orion/proj-shared/gen150/dsml/sickle"
 . $SRC/environment
 
 # Define the list of cases
-CASES=("Hmaxent-Xmaxent" "Hrandom-Xfull" "Hrandom-Xrandom" "Hrandom-Xuips")
+CASES=("Hrandom-Xfull" "Hrandom-Xmaxent" "Hrandom-Xrandom" "Hrandom-Xuips")
 
 # Define the run directory and source path
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
