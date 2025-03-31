@@ -14,10 +14,10 @@ shared:
 
 subsample:
   hypercubes: maxent
-  num_hypercubes: 7
+  num_hypercubes: 32
   method: uips
   path: /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/PiF050Gn0050/
-  num_samples: 1000
+  num_samples: 3277
   num_clusters: 20
   nxsl: 32
   nysl: 32
