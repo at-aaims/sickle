@@ -9,7 +9,6 @@ shared:
   ny: 4704
   nz: 37632
   gravity: y
-  plot: true
   fileprefix: "SST-Pi50-H{hypercubes}-cubes{num_hypercubes}-X{method}-ns{num_samples}-window{window}"
 
 subsample:

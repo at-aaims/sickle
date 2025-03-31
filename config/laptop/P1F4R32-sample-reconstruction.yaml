@@ -9,7 +9,6 @@ shared:
   ny: 512
   nz: 256
   gravity: z
-  #plot: true
   fileprefix: "{nxsl}x{nysl}x{nzsl}-ns{num_samples}-window{window}"
 
 subsample:

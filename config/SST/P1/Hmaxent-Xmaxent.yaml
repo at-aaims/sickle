@@ -9,7 +9,6 @@ shared:
   ny: 512
   nz: 256
   gravity: z
-  plot: true
   fileprefix: "SST-P1-H{hypercubes}-cubes{num_hypercubes}-X{method}-ns{num_samples}-window{window}"
 
 subsample:
@@ -27,6 +26,6 @@ train:
   epochs: 1000
   batch: 16
   target: p_full
-  window: 1
+  window: 2
   arch: MLP_transformer
   sequence: true

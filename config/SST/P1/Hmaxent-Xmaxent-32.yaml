@@ -26,6 +26,6 @@ train:
   epochs: 1000
   batch: 16
   target: p_full
-  window: 2
+  window: 1
   arch: MLP_transformer
   sequence: true

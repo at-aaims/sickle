@@ -5,7 +5,6 @@ shared:
   noseed: true
   output_vars: drag
   cluster_var: wz
-  plot: true
   fileprefix: "2dcyl-method={method}"
 
 subsample:
