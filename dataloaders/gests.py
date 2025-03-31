@@ -16,7 +16,7 @@ except ImportError:
 
 class GESTSDataLoader(DataLoader):
 
-    def __init__(self, args, **kwargs):
+    def __init__(self, args, extractor=None):
         super().__init__(args.path, dims=args.dims)
         self.args = args
         self.path = args.path
@@ -26,15 +26,15 @@ class GESTSDataLoader(DataLoader):
         self.varmap = dict(enstrophy='enst', velocity='uvw', pressure='p', dissipation='diss')
         self.verbose = getattr(args, 'verbose', False)
 
-        # If hypercube extraction is enabled, initialize the handler.
-        if getattr(args, 'hypercubes', False) and HypercubeHandler is not None:
+        # Use the extractor function if provided.
+        if extractor:
             self.hypercube_handler = HypercubeHandler(
                 method=args.hypercubes,
                 dims_full=self.grid_size,
                 dims_sl=self.subcube_size,
                 nbytes=args.nbytes,
                 num_hypercubes=args.num_hypercubes,
-                use_parallel=True  # or adjust based on your needs
+                use_parallel=True
             )
         else:
             self.hypercube_handler = None
