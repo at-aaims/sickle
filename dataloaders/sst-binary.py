@@ -6,8 +6,6 @@ from dataloaders import DataLoader
 from hypercubes.hypercube_manager import HypercubeHandler
 from helpers import get_1Dgrid, check_data
 
-from hypercubes.hypercube_manager import HypercubeHandler
-
 
 class DataLoaderSSTBinary(DataLoader):
 
@@ -88,7 +86,6 @@ class DataLoaderSSTBinary(DataLoader):
             print('Filtered timesteps to load:', t_labels)
 
         num_timesteps = len(t_labels)
-        hypercube_enabled = self.args.hypercubes
 
         # When extracting hypercubes, each loaded file returns an array of shape:
         num_points = self.args.num_hypercubes * self.num_pts  # number of hypercubes per file
