@@ -10,7 +10,8 @@
 #SBATCH -e /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
 
 # Setup environment
-. environment
+SRC="/lustre/orion/proj-shared/gen150/dsml/sickle"
+. $SRC/environment
 
 # Define the list of cases
 CASES=("Hmaxent-Xmaxent" "Hrandom-Xfull" "Hrandom-Xrandom" "Hrandom-Xuips")
@@ -19,12 +20,11 @@ CASES=("Hmaxent-Xmaxent" "Hrandom-Xfull" "Hrandom-Xrandom" "Hrandom-Xuips")
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
 mkdir -p $RUNDIR "$RUNDIR/snapshots" "$RUNDIR/plots"
 
-SRC="/lustre/orion/proj-shared/gen150/dsml/sickle"
 
 # Copy all case files to the run directory
 for CASE in "${CASES[@]}"; do
     echo "Copying case file: $CASE.yaml"
-    cp "config/GESTS/2048/$CASE.yaml" "$RUNDIR"
+    cp $SRC/config/GESTS/2048/$CASE.yaml $RUNDIR
 done
 
 # Copy the slurm.sh script for reproducibility

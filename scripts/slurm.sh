@@ -10,21 +10,19 @@
 #SBATCH -e /lustre/orion/scratch/whbrewer/stf218/sickle/%j/%x_%j.out
 
 ### Setup python environment
-
-. environment
+SRC="/lustre/orion/proj-shared/gen150/dsml/sickle"
+. $SRC/environment
 
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
 mkdir -p $RUNDIR "$RUNDIR/snapshots" "$RUNDIR/plots"
 
 CASE=P1-Xmaxent-Yfull-Hmaxent-32.yaml
 
-CASEPATH=config/SST/$CASE
+CASEPATH=$SRC/config/SST/$CASE
 
 cp $CASEPATH $RUNDIR
 cp slurm.sh $RUNDIR  # for reproducibility
 cd $RUNDIR
-
-SRC=/lustre/orion/proj-shared/gen150/dsml/sickle
 
 ### SUBSAMPLING 
 
