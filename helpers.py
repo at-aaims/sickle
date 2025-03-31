@@ -104,23 +104,39 @@ def get_data_memmap(loadpath, nx, ny, nz, nxsl, nysl, nzsl, nxoffset, nyoffset, 
     return datacube
 
 
-def check_data(loadpath, nx, ny, nz, nbyte):
-  # print('Checking data file...')
-  # read in test binary and check number of samples
-  binary = open(loadpath, 'rb')
-  binary.seek(0,2) ## seeks to the end of the file (needed for getting number of bytes)
-  num_bytes = binary.tell() ## how many bytes are in this file is stored as num_bytes
-  
-  if int(num_bytes/nbyte)==nx*ny*nz:
-      num_samp = nx*ny*nz
-      # print(f'Number of samples counted == actual. Check complete.')
-  else:
-      print(f'Number of bytes in file =\t{num_bytes:,}')
-      print(f'Number of counted samples =\t{int(num_bytes/nbyte):,}')
-      print(f'Number of actual samples =\t{nx*ny*nz:,}')
-      raise Exception(f'Number of samples counted != actual')
-  binary.close()
+#def check_data(loadpath, nx, ny, nz, nbyte):
+#  # print('Checking data file...')
+#  # read in test binary and check number of samples
+#  binary = open(loadpath, 'rb')
+#  binary.seek(0,2) ## seeks to the end of the file (needed for getting number of bytes)
+#  num_bytes = binary.tell() ## how many bytes are in this file is stored as num_bytes
+#  
+#  if int(num_bytes/nbyte)==nx*ny*nz:
+#      num_samp = nx*ny*nz
+#      # print(f'Number of samples counted == actual. Check complete.')
+#  else:
+#      print(f'Number of bytes in file =\t{num_bytes:,}')
+#      print(f'Number of counted samples =\t{int(num_bytes/nbyte):,}')
+#      print(f'Number of actual samples =\t{nx*ny*nz:,}')
+#      raise Exception(f'Number of samples counted != actual')
+#  binary.close()
 
+def check_data(loadpath, nx, ny, nz, nbyte, channels=1):
+    with open(loadpath, 'rb') as binary:
+        binary.seek(0, 2)  # Seek to the end of the file.
+        num_bytes = binary.tell()
+    
+    expected_samples = nx * ny * nz * channels
+    counted_samples = int(num_bytes / nbyte)
+    
+    if counted_samples == expected_samples:
+        # File size is as expected.
+        return
+    else:
+        print(f'Number of bytes in file =\t{num_bytes:,}')
+        print(f'Number of counted samples =\t{counted_samples:,}')
+        print(f'Number of actual samples =\t{expected_samples:,}')
+        raise Exception('Number of samples counted != actual')
 
 def check_and_create_dirs(directory):
     """ Checks if a directory exists, and creates it if it doesn't.  """

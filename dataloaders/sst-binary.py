@@ -51,16 +51,17 @@ class DataLoaderSSTBinary(DataLoader):
         print('num_pts:', self.num_pts)
         return x, y, z
 
-    def _get_hypercube_IDs(self, cv_vars, ts):
-        file_paths = [os.path.join(self.path, f'{v}_{ts:0.6f}') for v in cv_vars]
-        print(f'Finding hypercubes for timestep {ts:0.6f} using vars: {cv_vars}')
-        hypercubeIDs = self.hypercube_handler.extract_ids(file_paths)
-        return hypercubeIDs
+    #def _get_hypercube_IDs(self, cv_vars, ts):
+    #    file_paths = [os.path.join(self.path, f'{v}_{ts:0.6f}') for v in cv_vars]
+    #    print(f'Finding hypercubes for timestep {ts:0.6f} using vars: {cv_vars}')
+    #    return self.hypercube_handler.extract_ids(file_paths)
+    #    return hypercubeIDs
 
-    def _load_and_process_hypercubes(self, var, ts, hypercubeIDs):
+    def _load_and_process_hypercubes(self, var, ts, file_path, hypercubeIDs):
         print(f'Loading file using hypercube IDs for {var} at timestep {ts:0.6f}')
-        return self.hypercube_handler.load_hypercubes(var, ts, hypercubeIDs, self.path)
-    
+        check_data(file_path, self.args.nx, self.args.ny, self.args.nz, self.args.nbytes)
+        return self.hypercube_handler.load_hypercubes(file_path, hypercubeIDs)
+
     def load_multiple_timesteps(self, write_interval, num_timesteps, target, cv, file_filter='*_*'):
         self.path = os.path.dirname(self.path)
         file_names = glob.glob(os.path.join(self.path, file_filter))
@@ -105,11 +106,14 @@ class DataLoaderSSTBinary(DataLoader):
             hypercubeIDs = self.hypercube_handler.extract_ids(file_paths)
 
             for i, var in enumerate(cv_labels):
-                cv_arr[j, :, i] = self.hypercube_handler.load_hypercubes(var, ts, hypercubeIDs, self.path)
+                file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
+                cv_arr[j, :, i] = self._load_and_process_hypercubes(var, ts, file_path, hypercubeIDs)
             for i, var in enumerate(x_labels):
-                X[j, :, i] = self.hypercube_handler.load_hypercubes(var, ts, hypercubeIDs, self.path)
+                file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
+                X[j, :, i] = self._load_and_process_hypercubes(var, ts, file_path, hypercubeIDs)
             for i, var in enumerate(y_labels):
-                Y[j, :, i] = self.hypercube_handler.load_hypercubes(var, ts, hypercubeIDs, self.path)
+                file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
+                Y[j, :, i] = self._load_and_process_hypercubes(var, ts, file_path, hypercubeIDs)
             
         return X, Y, cv_arr
 

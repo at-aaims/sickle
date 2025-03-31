@@ -1,8 +1,6 @@
 import numpy as np
 import os
 
-from helpers import check_data
-
 
 def get_hypercube_extractor(method, **selector_kwargs):
     """
@@ -72,10 +70,6 @@ def get_hypercube_extractor(method, **selector_kwargs):
     def extractor(loadpaths, nbytes, file_shape, cube_shape, num_cubes):
         nx, ny, nz = file_shape
         hx, hy, hz = cube_shape
-
-        # Verify data in each file.
-        for loadpath in loadpaths:
-            check_data(loadpath, nx, ny, nz, nbytes)
 
         # Compute how many cubes fit in each dimension.
         num_x = (nx - 2) // hx

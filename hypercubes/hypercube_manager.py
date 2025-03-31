@@ -36,39 +36,36 @@ class HypercubeHandler:
         """
         return self.extractor(loadpaths, self.nbytes, self.dims_full, self.dims_sl, self.num_hypercubes)
     
-    def load_hypercubes(self, var, ts, hypercube_ids, base_path):
-        """
-        Loads hypercube data for a given variable at a specific timestep.
+    def load_hypercubes(self, file_path, hypercube_ids, has_vector=False):
+        nx, ny, nz = self.dims_full
+        hx, hy, hz = self.dims_sl
         
-        Parameters:
-          var (str): Variable name.
-          ts (float): Timestep value.
-          hypercube_ids (list): List of hypercube indices (tuples).
-          base_path (str): Base directory for the data files.
-          
-        Returns:
-          A flattened NumPy array containing the hypercube data.
-        """
-        file_path = os.path.join(base_path, f'{var}_{ts:0.6f}')
-        # Verify that the data in the file is valid.
-        check_data(file_path, *self.dims_full, self.nbytes)
-        
-        # Note: data is stored as [z, y, x] so we pass dims_full accordingly.
-        data_memmap = np.memmap(file_path, dtype=np.float32, mode='r',
-                                shape=(self.dims_full[2], self.dims_full[1], self.dims_full[0]))
+        # If the variable is vector, read with an extra channel dimension.
+        if has_vector:
+            # Expecting data stored as [channel, z, y, x]
+            data_memmap = np.memmap(file_path, dtype=np.float32, mode='r',
+                                    shape=(3, nz, ny, nx), order='F')
+        else:
+            data_memmap = np.memmap(file_path, dtype=np.float32, mode='r',
+                                    shape=(nz, ny, nx), order='F')
         
         cubes = []
         for ix, iy, iz in hypercube_ids:
-            x0 = ix * self.dims_sl[0]
-            y0 = iy * self.dims_sl[1]
-            z0 = iz * self.dims_sl[2]
-            cube = data_memmap[z0:z0+self.dims_sl[2],
-                               y0:y0+self.dims_sl[1],
-                               x0:x0+self.dims_sl[0]]
-            # Transpose to bring data to [x, y, z] order, then copy the cube.
-            cubes.append(cube.copy().transpose(2, 1, 0))
+            x0 = ix * hx
+            y0 = iy * hy
+            z0 = iz * hz
+            if has_vector:
+                # Extract subcube for each channel.
+                cube = data_memmap[:, z0:z0+hz, y0:y0+hy, x0:x0+hx]
+                # Rearrange from shape (3, hz, hy, hx) to (hx, hy, hz, 3)
+                cube = cube.copy().transpose(3, 2, 1, 0)
+                # Flatten spatial dimensions so that each hypercube is (num_points, 3)
+                cube = cube.reshape(-1, 3)
+            else:
+                cube = data_memmap[z0:z0+hz, y0:y0+hy, x0:x0+hx]
+                cube = cube.copy().transpose(2, 1, 0).reshape(-1)
+            cubes.append(cube)
         
-        cubes = np.array(cubes)
-        # Clean up the memmap.
         data_memmap._mmap.close()
-        return cubes.reshape(-1)
+        # Concatenate cubes along the first dimension.
+        return np.concatenate(cubes, axis=0)
