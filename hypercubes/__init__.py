@@ -1,3 +1,6 @@
+import numpy as np
+import os
+
 from helpers import check_data
 
 

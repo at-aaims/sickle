@@ -14,7 +14,7 @@ shared:
 
 subsample:
   hypercubes: random
-  num_hypercubes: 1
+  num_hypercubes: 32
   method: maxent  # or random
   path: /lustre/orion/tur120/world-shared/daludot/phy_cube_data/2048
   num_samples: 1638
