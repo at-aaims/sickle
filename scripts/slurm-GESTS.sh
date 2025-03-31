@@ -42,7 +42,7 @@ for CASE in "${CASES[@]}"; do
     echo "Processing case: $CASE"
     
     ### SUBSAMPLING
-    time srun -n 8 python -u "$SRC/subsample-mpi.py" "$CASE.yaml" \
+    time srun -n 8 python -u "$SRC/subsample.py" "$CASE.yaml" \
                    --output_dir "$RUNDIR/snapshots" >& "$RUNDIR/subsample${count}.out"
 
     ### TRAINING

@@ -26,7 +26,7 @@ cd $RUNDIR
 
 ### SUBSAMPLING 
 
-time srun -N $SLURM_NNODES -n56 python -u $SRC/subsample-mpi.py $CASE \
+time srun -N $SLURM_NNODES -n56 python -u $SRC/subsample.py $CASE \
                            --output_dir $RUNDIR/snapshots >& $RUNDIR/subsample.out
 
 ### TRAINING

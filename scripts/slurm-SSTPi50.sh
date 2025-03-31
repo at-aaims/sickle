@@ -44,7 +44,7 @@ for CASE in "${CASES[@]}"; do
     echo "Processing case: $CASE"
     
     ### SUBSAMPLING
-    time srun -N "$SLURM_NNODES" -n56 python -u "$SRC/subsample-mpi.py" "$CASE.yaml" \
+    time srun -N "$SLURM_NNODES" -n56 python -u "$SRC/subsample.py" "$CASE.yaml" \
               --output_dir "$RUNDIR/snapshots" >& "$RUNDIR/subsample${count}.out"
 
     ### TRAINING
