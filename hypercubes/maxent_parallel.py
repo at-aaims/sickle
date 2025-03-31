@@ -188,8 +188,7 @@ def mpi_kmeans(local_data, n_clusters, batch_size=10000, n_init=10, max_iter=100
         # Normalize by number of processes
         cluster_centers = global_centers / size
 
-        #if rank == 0 and i % (n_iters // 5) == 0:  # Print progress every few iterations
-        if rank == 0: # and i % (n_iters // 5) == 0:  # Print progress every few iterations
+        if rank == 0: 
             print(f"Iteration {i+1}/{n_iters} - Synchronizing cluster centers...")
 
     comm.Barrier()  # Ensure all ranks finish

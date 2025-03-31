@@ -78,9 +78,10 @@ class MaxentSubsampler(Subsampler):
                 q = prob_dists[j] + 1e-10
                 adj_matrix[i, j] = scipy.stats.entropy(p, q)
         in_strengths = np.sum(adj_matrix, axis=0)
+        df = pd.DataFrame(adj_matrix)
+        print(df)
+
         if self.args.plot:
-            df = pd.DataFrame(adj_matrix)
-            print(df)
             plot_adjacency_matrix(adj_matrix, n_clusters, timestep)
         return in_strengths
 
