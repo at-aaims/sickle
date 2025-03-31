@@ -93,6 +93,8 @@ class DataLoaderSSTBinary(DataLoader):
         Y = np.zeros((num_timesteps, num_points, len(y_labels)))
         cv_arr = np.zeros((num_timesteps, num_points, len(cv_labels)))
 
+        hypercube_ids_dict = {}
+
         for j, ts in enumerate(t_labels):
             """
             TODO:
@@ -100,17 +102,23 @@ class DataLoaderSSTBinary(DataLoader):
             Same as subsampling for loop.
             """
             file_paths = [os.path.join(self.path, f'{v}_{ts:0.6f}') for v in cv_labels]
-            hypercubeIDs = self.hypercube_handler.extract_ids(file_paths)
+            hypercube_ids = self.hypercube_handler.extract_ids(file_paths)
+            hypercube_ids_dict[str(ts)] = hypercube_ids
 
             for i, var in enumerate(cv_labels):
                 file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
-                cv_arr[j, :, i] = self._load_and_process_hypercubes(var, ts, file_path, hypercubeIDs)
+                cv_arr[j, :, i] = self._load_and_process_hypercubes(var, ts, file_path, hypercube_ids)
             for i, var in enumerate(x_labels):
                 file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
-                X[j, :, i] = self._load_and_process_hypercubes(var, ts, file_path, hypercubeIDs)
+                X[j, :, i] = self._load_and_process_hypercubes(var, ts, file_path, hypercube_ids)
             for i, var in enumerate(y_labels):
                 file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
-                Y[j, :, i] = self._load_and_process_hypercubes(var, ts, file_path, hypercubeIDs)
+                Y[j, :, i] = self._load_and_process_hypercubes(var, ts, file_path, hypercube_ids)
+
+        # Save the collected hypercube_ids to an NPZ file
+        out_file = os.path.join(self.args.output_dir, f"hypercube_ids_{self.args.fileprefix}.npz")
+        np.savez(out_file, hypercube_ids=hypercube_ids_dict)
+        print(f"Hypercube IDs saved to {out_file}")
             
         return X, Y, cv_arr
 
