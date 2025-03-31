@@ -13,7 +13,7 @@
 . environment
 
 # Define the list of cases
-CASES=("full" "maxent" "random" "uips")
+CASES=("Hmaxent-Xmaxent" "Hrandom-Xfull" "Hrandom-Xrandom" "Hrandom-Xuips")
 
 # Define the run directory and source path
 RUNDIR="$MEMBERWORK/stf218/sickle/${SLURM_JOB_ID}"
