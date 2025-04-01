@@ -22,7 +22,7 @@ mkdir -p $RUNDIR "$RUNDIR/snapshots" "$RUNDIR/plots"
 # Copy all case files to the run directory
 for CASE in "${CASES[@]}"; do
     echo "Copying case file: $CASE.yaml"
-    cp $SRC/config/SST/MATEY/$CASE.yaml $RUNDIR
+    cp $SRC/config/MATEY/$CASE.yaml $RUNDIR
 done
 
 # Copy the slurm.sh script for reproducibility
