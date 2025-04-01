@@ -59,30 +59,47 @@ class Trainer:
         Initialize the distributed environment for DDP using environment variables
         provided by Slurm, set up model and dataset.
         """
-        self.rank = int(os.environ['SLURM_PROCID'])  # Global rank of the current process
-        self.world_size = int(os.environ['SLURM_NTASKS'])  # Total number of tasks
-        #self.master_addr = os.environ['MASTER_ADDR']  # Address of the master node
-        #self.master_port = os.environ['MASTER_PORT']  # Port of the master node
-
         self.X_test = X_test
         self.Y_test = Y_test
         self.to_plot = args.plot
 
-        # Initialize the process group
-        dist.init_process_group("nccl", rank=self.rank, world_size=self.world_size)
-        torch.cuda.set_device(self.rank % torch.cuda.device_count())  # Assign GPU based on rank
+        # Global rank of the current process
+        self.rank = int(os.environ['SLURM_PROCID']) if "SLURM_PROCID" in os.environ else 0
+        # Total number of tasks
+        self.world_size = int(os.environ['SLURM_NTASKS']) if "SLURM_NTASKS" in os.environ else 1
+        if self.world_size == 1:
+            print("Trainer: running on one process")
+        if 'MASTER_ADDR' in os.environ:
+            if self.rank == 0:
+                print("Trainer: master address is " + os.environ["MASTER_ADDR"])
+        else:
+            raise "Need the environment variable MASTER_ADDR to be set to the IP address of the master process!"
+        self.master_addr = os.environ['MASTER_ADDR']  # Address of the master node
+        #self.master_port = os.environ['MASTER_PORT']  # Port of the master node
 
-        # Verify GPU setup
-        print(f"Trainer: Rank {self.rank}: Using GPU {torch.cuda.current_device()} - {torch.cuda.get_device_name()}")
-        
-        self.device = torch.device(f'cuda:{self.rank % torch.cuda.device_count()}')
+        self.device = torch.device("cpu")
+        if torch.cuda.is_available():
+            if self.rank == 0:
+                print('Trainer: We have a GPU!')
+            # Initialize the process group
+            dist.init_process_group("nccl", rank=self.rank, world_size=self.world_size)
+            torch.cuda.set_device(self.rank % torch.cuda.device_count())  # Assign GPU based on rank
+            self.device = torch.device(f'cuda:{self.rank % torch.cuda.device_count()}')
+            # Verify GPU setup
+            print(f"Trainer: Rank {self.rank}: Using GPU {torch.cuda.current_device()} - {torch.cuda.get_device_name()}")
+        else:
+            if self.rank == 0:
+                print('Trainer: CPU only.')
+            dist.init_process_group("gloo", rank=self.rank, world_size=self.world_size)
+
         print(f"Trainer: Rank {self.rank}: Device set to {self.device}")
         
         # Setup data loaders with DistributedSampler
         self.train_sampler = DistributedSampler(TensorDataset(X_train, Y_train), num_replicas=self.world_size, rank=self.rank)
 
         self.train_loader = DataLoader(TensorDataset(X_train, Y_train), batch_size=args.batch, sampler=self.train_sampler)
-        print(f"Trainer: batch size: {args.batch}")
+        if self.rank == 0:
+            print(f"Trainer: batch size: {args.batch}")
     
         input_shape = X_train.shape[1:]
         output_shape = Y_train.shape[1:] if len(Y_train.shape) > 1 else 1
@@ -90,8 +107,10 @@ class Trainer:
         model = model_module.build_model(input_shape, output_shape, window=args.window).to(self.device)
 
         print(f"Trainer: Rank {self.rank}: Model moved to {self.device}")
+        # device_ids must be None for CPUs.
+        device_ids = [self.device.index] if torch.cuda.is_available() else None
         # Wrap the model with DistributedDataParallel
-        self.model = nn.parallel.DistributedDataParallel(model, device_ids=[self.device.index])
+        self.model = nn.parallel.DistributedDataParallel(model, device_ids=device_ids)
 
         # Initialize lists to keep track of losses (recorded only on rank 0)
         self.train_loss_history = []
@@ -132,7 +151,9 @@ class Trainer:
                 torch.autocast(device_type=dev_type, dtype=prec_dict[args.precision])
         scaler = NoScaler() if args.mxp_mode in ("none", "noscale") else \
                 torch.amp.GradScaler(dev_type)
-        print(f"Trainer: Running with {args.mxp_mode} mixed-precision strategy, {args.precision} precision, on device type {dev_type}.")
+        precision = args.precision if args.mxp_mode != "none" else "default"
+        if self.rank == 0:
+            print(f"Trainer: Running with {args.mxp_mode} mixed-precision strategy, {precision} precision, on device type {dev_type}.")
 
         for epoch in range(args.epochs):
             self.model.train()
@@ -285,17 +306,19 @@ def main():
     trainer = Trainer(args, X_train, Y_train, X_test, Y_test)
 
     dist.barrier()
-    if trainer.rank == 0:
-        em = EnergyMonitor(get_calling_filename())
-        em.start()
+    if os.path.exists("/sys/cray/pm_counters"):
+        if trainer.rank == 0:
+            em = EnergyMonitor(get_calling_filename())
+            em.start()
 
     trainer.training_loop()
 
-    dist.barrier()
-    if trainer.rank == 0:
-        em.end()
-        print("Aggregating energy reports across nodes:")
-        em.aggregate()
+    if os.path.exists("/sys/cray"):
+        dist.barrier()
+        if trainer.rank == 0:
+            em.end()
+            print("Aggregating energy reports across nodes:")
+            em.aggregate()
 
     trainer.eval()
 
