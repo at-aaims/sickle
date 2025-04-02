@@ -1,3 +1,5 @@
+# SICKLE
+
 **SICKLE** (Sparse Intelligent Curation frameworK for Learning Efficiency) is a tool designed to extract data with the highest probabilistic information content, thereby reducing the cost of training large models.
 
 ## Table of Contents
@@ -8,6 +10,7 @@
 - [Configuration](#configuration)
 - [Examples](#examples)
 - [Advanced Topics](#advanced-topics)
+- [SLURM Scripts](#slurm-scripts)
 - [License](#license)
 - [Additional Resources](#additional-resources)
 
@@ -17,18 +20,26 @@ SICKLE helps "separate the wheat from the chaff" by using various subsampling me
 
 ## Installation
 
-1. **Environment Setup:**  
-   Activate the required Python virtual environments:
-   ```bash
-   source /path/to/venv/bin/activate
-   ```
-2. **Dependencies:**  
-   Ensure required modules (e.g., `cray-python`, `rocm`) are loaded:
-   ```bash
-   module load cray-python/3.10.10 rocm
-   ```
-3. **Download/Clone Repository:**  
+1. **Download/Clone Repository:**  
    Clone the repository to your local machine.
+
+2. **Local Environment Setup:**  
+   - Activate the required Python virtual environment:
+     ```bash
+     source /path/to/venv/bin/activate
+     ```
+   - Load required modules:
+     ```bash
+     module load cray-python/3.10.10 rocm
+     ```
+
+3. **Frontier Environment Setup:**  
+   On Frontier, a simple environment setup is provided. Instead of running the above two steps separately, simply execute:
+   ```bash
+   . environment
+   ```
+   This single command sets up both the virtual environment and loads the required modules.
+
 
 ## Usage
 
@@ -42,7 +53,6 @@ Instead of specifying every parameter on the command line, you can use a YAML co
   ```bash
   python subsample.py config/OF/default.yaml
   ```
-
 - **Overriding specific parameters:**
   ```bash
   python subsample.py config/OF/default.yaml --plot
@@ -50,13 +60,12 @@ Instead of specifying every parameter on the command line, you can use a YAML co
 
 ### Training
 
-For training, a similar approach is used. For example:
+Similarly, for training you can:
 
 - **Using the YAML file only:**
   ```bash
   python -u train.py config/OF/default.yaml
   ```
-
 - **Overriding specific parameters (e.g., epochs):**
   ```bash
   python -u train.py config/OF/default.yaml --epochs 3000
@@ -116,6 +125,14 @@ Detailed examples (including commands for testing on laptops, Frontier, parallel
   Options such as mixed precision (`amp`) and network architectures like `MLP_transformer` are available.
 - **Integration with PyTorch:**  
   See the [PyTorch Frontier Documentation](https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html) for further details on the training environment.
+
+## SLURM Scripts
+
+For users running on clusters with SLURM, sample scripts are available in the `scripts` directory. These scripts are set up to perform both a subsampling and a training event in a single SLURM session. **Before using them, make sure to modify the scripts to specify your account information.** For example, you can submit a job with:
+
+```bash
+sbatch scripts/slurm.sh
+```
 
 ## License
 
