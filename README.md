@@ -1,8 +1,3 @@
-Below is the updated README script incorporating your preferred usage examples that use YAML configuration files along with optional command-line overrides:
-
-```markdown
-# SICKLE
-
 **SICKLE** (Sparse Intelligent Curation frameworK for Learning Efficiency) is a tool designed to extract data with the highest probabilistic information content, thereby reducing the cost of training large models.
 
 ## Table of Contents
@@ -132,4 +127,3 @@ For more details, see the [LICENSE](./LICENSE) file.
 
 - [PyTorch Frontier Documentation](https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html)
 - For further details on configuration and command-line options, refer to the inline comments in [`args.py`](./args.py).
-```
