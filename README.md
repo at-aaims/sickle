@@ -1,93 +1,135 @@
-# SICKLE 
+Below is the updated README script incorporating your preferred usage examples that use YAML configuration files along with optional command-line overrides:
 
-SICKLE = Sparse Intelligent Curation frameworK for Learning Efficiency 
+```markdown
+# SICKLE
 
-SICKLE is a tool to "separate the wheat from the chaff", that is, to extract 
-data with the probabilistically highest information content to improve the 
-cost of training large models.
+**SICKLE** (Sparse Intelligent Curation frameworK for Learning Efficiency) is a tool designed to extract data with the highest probabilistic information content, thereby reducing the cost of training large models.
 
-# Subsampling
+## Table of Contents
 
-Login to Frontier
+- [Overview](#overview)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Examples](#examples)
+- [Advanced Topics](#advanced-topics)
+- [License](#license)
+- [Additional Resources](#additional-resources)
 
-    source /lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate
+## Overview
 
-    python subsample.py --method maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 10000 --input_vars u v w r --target p_full --output_vars p pv --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 32 --nysl 32 --nzsl 32 --window 2
+SICKLE helps "separate the wheat from the chaff" by using various subsampling methods (e.g., maxent, random) to extract the most informative data segments. It supports both training and testing modes and can be run on different systems (e.g., local laptop, Frontier).
 
-# Training
+## Installation
 
-    source '/lustre/orion/proj-shared/gen150/dsml/venv/pyt/bin/activate'
+1. **Environment Setup:**  
+   Activate the required Python virtual environments:
+   ```bash
+   source /path/to/venv/bin/activate
+   ```
+2. **Dependencies:**  
+   Ensure required modules (e.g., `cray-python`, `rocm`) are loaded:
+   ```bash
+   module load cray-python/3.10.10 rocm
+   ```
+3. **Download/Clone Repository:**  
+   Clone the repository to your local machine.
 
-    module load cray-python/3.10.10 rocm
+## Usage
 
-    python -u train-ddp.py --epochs 10 --patience 100 --dims 3 --dtype sst-binary --noseed -ns 10000 --input_vars u v w r --target p_full --output_vars p pv --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 32 --nysl 32 --nzsl 32 --window 2 --arch MLP_transformer --sequence
+SICKLE is run from the command line. It supports both direct command-line specification of parameters and YAML configuration files. When a YAML configuration file is provided, its settings are used as defaults; any additional command-line switches will override the YAML values.
 
-See https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html
+### Subsampling
 
-# Tests on laptop - random and maxent
+Instead of specifying every parameter on the command line, you can use a YAML configuration file. For example:
 
-    python subsample.py -m random --path ~/data/cylinder --target drag -ns 540
-    python subsample.py -m maxent --path ~/data/cylinder --target drag -ns 540 -cv p
+- **Using the YAML file only:**
+  ```bash
+  python subsample.py config/OF/default.yaml
+  ```
 
-# Tests on Frontier
+- **Overriding specific parameters:**
+  ```bash
+  python subsample.py config/OF/default.yaml --plot
+  ```
 
-    source '/lustre/orion/proj-shared/gen150/dsml/venv/sst/bin/activate'
+### Training
 
-    python subsample.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
+For training, a similar approach is used. For example:
 
-    python subsample.py -m full --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z
+- **Using the YAML file only:**
+  ```bash
+  python -u train.py config/OF/default.yaml
+  ```
 
-# Parallel tests on Frontier
+- **Overriding specific parameters (e.g., epochs):**
+  ```bash
+  python -u train.py config/OF/default.yaml --epochs 3000
+  ```
 
-    # OpenFOAM dataset - random and maxent
+For a complete list of options, see the [`args.py`](./args.py) file.
 
-    srun -n 4 python -u subsample-mpi.py -m random --path ~/data/cylinder --target drag -ns 540
-    srun -n 4 python -u subsample-mpi.py -m maxent --path ~/data/cylinder --target drag -ns 540
+## Configuration
 
-    # Taylor Green 10 timesteps
-    OPENBLAS_NUM_THREADS=4 srun -n 4 python -u subsample-mpi.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
+SICKLE uses YAML configuration files to set parameters. All configurations are flattened, which means they don't need to be nested under a hierarchy. Below is an example configuration snippet:
 
-    # Taylor Green 126 timesteps
-    OPENBLAS_NUM_THREADS=4 srun -n 4 python -u subsample-mpi.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/P1F4R32_training/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
+```yaml
+shared:
+  dims: 3
+  dtype: sst-binary
+  noseed: true
+  input_vars: [u, v, w, r]
+  output_vars: [p, pv]
+  cluster_var: [p, pv]
+  nx: 514
+  ny: 512
+  nz: 256
+  gravity: z
+  fileprefix: "SST-P1-H{hypercubes}-cubes{num_hypercubes}-X{method}-ns{num_samples}-window{window}"
 
-    # Green - isotropic homogenous 64T dataset
+subsample:
+  hypercubes: maxent
+  num_hypercubes: 32
+  method: maxent  # or random
+  path: /path/to/data/
+  num_samples: 3277
+  num_clusters: 20
+  nxsl: 32
+  nysl: 32
+  nzsl: 32
 
-    OPENBLAS_NUM_THREADS=4 srun -n 4 python -u subsample-mpi.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/Green/ --plot -ns 1000 --input_vars u v w r --output_vars p --cluster_var r --nx 12290 --ny 6144 --nz 12288 --gravity y --nxsl 1536 --ny 768 --nzsl 1536 --nbytes 32 --timesteps 0.5 1.0
+train:
+  epochs: 1000
+  batch: 16
+  target: p_full
+  window: 1
+  arch: MLP_transformer
+  sequence: true
+```
 
-    OPENBLAS_NUM_THREADS=4 srun -n 4 python -u subsample-mpi.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/Green/ --plot -ns 1000 --input_vars u v w r --output_vars p --cluster_var r --nx 11202 --ny 5600 --nz 11200 --gravity y --nxsl 1536 --ny 768 --nzsl 1536 --nbytes 32 --timesteps 2.0
+*Note:* Adjust the YAML details as needed for your use cases.
 
-    OPENBLAS_NUM_THREADS=4 srun -n 4 python -u subsample-mpi.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/Green/ --plot -ns 1000 --input_vars u v w r --output_vars p --cluster_var r --nx 8450 --ny 4224 --nz 8448 --gravity y --nxsl 1536 --ny 768 --nzsl 1536 --nbytes 32 --timesteps 4.0
+## Examples
 
-    OPENBLAS_NUM_THREADS=4 srun -n 4 python -u subsample-mpi.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/Green/ --plot -ns 1000 --input_vars u v w r --output_vars p --cluster_var r --nx 7682 --ny 3840 --nz 7680 --gravity y --nxsl 1536 --ny 768 --nzsl 1536 --nbytes 32 --timesteps 6.0
+Detailed examples (including commands for testing on laptops, Frontier, parallel runs, and flow over cylinder cases) are provided in a separate file: [EXAMPLES.md](./EXAMPLES.md).
 
-    OPENBLAS_NUM_THREADS=4 srun -n 4 python -u subsample-mpi.py -m maxent --dims 3 --dtype sst-binary --path /lustre/orion/world-shared/stf006/muraligm/CFD135/data_iso/max_ent/binary_data/Green/ --plot -ns 1000 --input_vars u v w r --output_vars p --cluster_var r --nx 7170 --ny 3584 --nz 7168 --gravity y --nxsl 1536 --ny 768 --nzsl 1536 --nbytes 32 --timesteps 7.7
+## Advanced Topics
 
-# Using with flow over cylinder case
+- **Parallel Processing:**  
+  SICKLE supports parallel execution (e.g., using `srun` for MPI-based tests).
+- **Mixed Precision and Scalability:**  
+  Options such as mixed precision (`amp`) and network architectures like `MLP_transformer` are available.
+- **Integration with PyTorch:**  
+  See the [PyTorch Frontier Documentation](https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html) for further details on the training environment.
 
-    python subsample.py -m maxent --path ~/data/cylinder --target drag -ns 1080 -nc 20 -cv wz
+## License
 
-    python subsample.py -m uips --path ~/data/cylinder --target drag -ns 1080 -nc 20 --plot
+This project is licensed under the **MIT License**.
 
-# Compare methods
+For more details, see the [LICENSE](./LICENSE) file.
 
-Used to create a histogram plot which will compare the subsampling distributions of the various methods.
+## Additional Resources
 
-    python compare_methods.py --path ~/data/cylinder --target drag -ns 1080 -nc 20 -cv wz
-
-    python compare_methods.py --dims 3 --dtype sst-binary --path /lustre/orion/proj-shared/gen150/dsml/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 100 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z --nxsl 128 --nysl 128 --nzsl 64
-
-    python compare_methods.py --dims 3 --dtype sst-binary --path ~/data/P1F4R32_nx512ny512nz256_6vars/ --noseed --plot -ns 20971 --input_vars u v w r --output_vars p --cluster_var pv --nx 514 --ny 512 --nz 256 --gravity z
-
-# Uniform-in-phase-space testing
-
-See [uips/README.md](uips/README.md)
-
-### Latest
-
-These all work:
-
-    CASE=config/P1F4R32/sample-reconstruction.yaml
-    srun -N $SLURM_NNODES -n8 python -u train.py $CASE
-    srun python -u train-ddp.py $CASE
-    python -u train.py $CASE
-
+- [PyTorch Frontier Documentation](https://docs.olcf.ornl.gov/software/python/pytorch_frontier.html)
+- For further details on configuration and command-line options, refer to the inline comments in [`args.py`](./args.py).
+```
