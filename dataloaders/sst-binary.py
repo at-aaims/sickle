@@ -5,7 +5,8 @@ import re
 from dataloaders import DataLoader
 from hypercubes.hypercube_manager import HypercubeHandler
 from helpers import get_1Dgrid, check_data
-
+from helpers import setup_rank_print
+setup_rank_print()
 
 class DataLoaderSSTBinary(DataLoader):
 

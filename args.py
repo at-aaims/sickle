@@ -5,6 +5,9 @@ import yaml
 
 from constants import FieldPredictionType
 
+from helpers import setup_rank_print
+setup_rank_print()
+
 # Function to load configuration from a YAML file
 def load_config(file_path):
     if os.path.exists(file_path):

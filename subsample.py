@@ -10,7 +10,8 @@ from hypercubes import get_hypercube_extractor
 from plotting import plot_samples, plot2d_contour
 from subsampling import get_subsampler
 from viz import save_vtu
-
+from helpers import setup_rank_print
+setup_rank_print()
 
 def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128):
     """Extracts the y-z plane for a given x-index at a specific timestep and feature."""
