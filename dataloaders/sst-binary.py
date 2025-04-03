@@ -21,9 +21,9 @@ class DataLoaderSSTBinary(DataLoader):
             dims_sl   = (self.args.nxsl, self.args.nysl, self.args.nzsl)
             nskips = (self.args.nxskip, self.args.nyskip, self.args.nzskip)
             self.hypercube_handler = HypercubeHandler(
-                self.args.hypercubes, dims_full, dims_sl, nskips,
-                self.args.nbytes, self.args.num_hypercubes, self.args.num_clusters,
-                use_parallel=True  # or other selector_kwargs as needed
+                self.args.hypercubes, dims_full, dims_sl,
+                self.args.nbytes, self.args.num_hypercubes, 
+                num_clusters=self.args.num_clusters, nskips=nskips, use_parallel=True  # or other selector_kwargs as needed
             )
 
     def _extract_times(self, file_names):

@@ -4,7 +4,8 @@ from helpers import check_data
 from . import get_hypercube_extractor
 
 class HypercubeHandler:
-    def __init__(self, method, dims_full, dims_sl, nskips, nbytes, num_hypercubes, num_clusters, **selector_kwargs):
+    def __init__(self, method, dims_full, dims_sl, nbytes, num_hypercubes, 
+                 **selector_kwargs):
         """
         Initializes the hypercube handler.
         
@@ -18,13 +19,12 @@ class HypercubeHandler:
         """
         self.dims_full = dims_full
         self.dims_sl = dims_sl
-        self.nskips = nskips
+        self.selector_kwargs = selector_kwargs
         self.nbytes = nbytes
         self.num_hypercubes = num_hypercubes
-        self.num_clusters = num_clusters
         
         # Create an extractor function using the provided method.
-        self.extractor = get_hypercube_extractor(method, **selector_kwargs)
+        self.extractor = get_hypercube_extractor(method, **self.selector_kwargs)
     
     def extract_ids(self, loadpaths):
         """
@@ -36,7 +36,8 @@ class HypercubeHandler:
         Returns:
           List of selected hypercube indices.
         """
-        return self.extractor(loadpaths, self.nbytes, self.dims_full, self.dims_sl, self.nskips, self.num_hypercubes, self.num_clusters)
+        return self.extractor(loadpaths, self.nbytes, self.dims_full, self.dims_sl, 
+                              self.num_hypercubes, **self.selector_kwargs)
     
     def load_hypercubes(self, file_path, hypercube_ids, has_vector=False):
         nx, ny, nz = self.dims_full

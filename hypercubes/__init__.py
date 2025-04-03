@@ -44,12 +44,12 @@ def get_hypercube_extractor(method, **selector_kwargs):
         else:
             from .maxent_sequential import maxent_hypercubes as maxent_func
 
-        def selector_func(indices, num_cubes, nx, ny, nz, hx, hy, hz, nskips, **kwargs):
+        def selector_func(indices, num_cubes, nx, ny, nz, hx, hy, hz, **kwargs):
             sampled_subcubes = maxent_func(
                 kwargs["loadpaths"],
                 nx, ny, nz,
                 hx, hy, hz,
-                nskips,
+                nskips=kwargs["nskips"],
                 n_clusters=kwargs["num_clusters"],
                 n_cubes=num_cubes,
                 batch_size=1024,
@@ -68,7 +68,7 @@ def get_hypercube_extractor(method, **selector_kwargs):
         raise ValueError(f"Unsupported hypercube selection method: {method}")
 
     # --- The extractor closure ---
-    def extractor(loadpaths, nbytes, file_shape, cube_shape, nskips, num_cubes, num_clusters):
+    def extractor(loadpaths, nbytes, file_shape, cube_shape, num_cubes, **kwargs):
         nx, ny, nz = file_shape
         hx, hy, hz = cube_shape
 
@@ -92,9 +92,9 @@ def get_hypercube_extractor(method, **selector_kwargs):
                 indices, num_cubes,
                 nx=nx, ny=ny, nz=nz,
                 hx=hx, hy=hy, hz=hz,
-                nskips=nskips,
+                nskips=kwargs.get("nskips"),
                 loadpaths=loadpaths,
-                num_clusters=num_clusters
+                num_clusters=kwargs.get("num_clusters")
             )
         else:
             sel_indices = np.arange(len(indices))
