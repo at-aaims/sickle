@@ -18,9 +18,10 @@ class DataLoaderSSTBinary(DataLoader):
             # instantiate a HypercubeHandler.
             dims_full = (self.args.nx, self.args.ny, self.args.nz)
             dims_sl   = (self.args.nxsl, self.args.nysl, self.args.nzsl)
+            nskips = (self.args.nxskip, self.args.nyskip, self.args.nzskip)
             self.hypercube_handler = HypercubeHandler(
-                self.args.hypercubes, dims_full, dims_sl, 
-                self.args.nbytes, self.args.num_hypercubes,
+                self.args.hypercubes, dims_full, dims_sl, nskips,
+                self.args.nbytes, self.args.num_hypercubes, self.args.num_clusters,
                 use_parallel=True  # or other selector_kwargs as needed
             )
 
@@ -48,12 +49,6 @@ class DataLoaderSSTBinary(DataLoader):
         self.num_pts = self.nx * self.ny * self.nz
         print('num_pts:', self.num_pts)
         return x, y, z
-
-    #def _get_hypercube_IDs(self, cv_vars, ts):
-    #    file_paths = [os.path.join(self.path, f'{v}_{ts:0.6f}') for v in cv_vars]
-    #    print(f'Finding hypercubes for timestep {ts:0.6f} using vars: {cv_vars}')
-    #    return self.hypercube_handler.extract_ids(file_paths)
-    #    return hypercubeIDs
 
     def _load_and_process_hypercubes(self, var, ts, file_path, hypercubeIDs):
         print(f'Loading file using hypercube IDs for {var} at timestep {ts:0.6f}')

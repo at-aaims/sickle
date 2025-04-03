@@ -21,7 +21,7 @@ seed_value = comm.bcast(seed_value, root=0)
 np.random.seed(seed_value)  # Set the seed for NumPy
 
 
-def load_data_mpi(comm, loadpaths, nx, ny, nz, rank, size, split_axis=0, nskip=1):
+def load_data_mpi(comm, loadpaths, nx, ny, nz, rank, size, nskips=(4,4,4)):
     """
     Load a full 4D dataset (stacked along a new axis) in parallel via MPI.
     The dataset is loaded on rank 0 from a list of loadpaths, then split along the specified axis.
@@ -48,43 +48,33 @@ def load_data_mpi(comm, loadpaths, nx, ny, nz, rank, size, split_axis=0, nskip=1
         local_coords: np.ndarray
             Flattened coordinate array with shape (n_voxels, 3).
     """
-    if rank == 0:
-        # n_features will equal the number of loaded files (channels)
-        data_list = []
-        for path in loadpaths:
-            # Load the data as a memmap; data is originally shaped (nz, ny, nx)
-            data = np.memmap(path, dtype=np.float32, mode='r', shape=(nz, ny, nx))[::nskip, ::nskip, :-2:nskip]
-            # Transpose to reorder dimensions: now shape becomes (nx, ny, nz)
-            data = data.transpose(2, 1, 0)
-            data_list.append(data)
-        
-        # Stack the 3D arrays along a new axis (the 4th dimension)
-        data_4d = np.stack(data_list, axis=-1)  # shape: (nx, ny, nz, n_loads)
-        n_features = data_4d.shape[-1]
-        
-        # Create a coordinate grid based on the shape of one loaded 3D array.
-        # np.indices returns an array of shape (3, nx, ny, nz); transpose to (nx, ny, nz, 3)
-        coords = np.indices(data_list[0].shape).transpose(1, 2, 3, 0)
-        
-        # Split the 4D data and the coordinate grid along the specified axis.
-        # Convert the splits to regular NumPy arrays to ensure they are picklable.
-        split_data = [np.array(part) for part in np.array_split(data_4d, size, axis=split_axis)]
-        split_coords = [np.array(part) for part in np.array_split(coords, size, axis=split_axis)]
-    else:
-        split_data = None
-        split_coords = None
-        n_features = None
+    nxskip, nyskip, nzskip = nskips
+    n_features = len(loadpaths)
+    chunk_rank = (nz + size - 1) // size
+    z_start = rank * chunk_rank
+    z_end = min((rank + 1) * chunk_rank, nz)
+    
+    # Downsampled sizes for coordinate generation
+    z_indices = np.arange(z_start, z_end, nzskip)
+    y_indices = np.arange(0, ny, nyskip)
+    x_indices = np.arange(0, nx - 2, nxskip)
 
-    # Broadcast n_features to all processes.
-    n_features = comm.bcast(n_features, root=0)
+    if z_start >= nz or len(z_indices) == 0: # if rank is more than slice
+        return np.empty((0, n_features)), np.empty((0, 3))
+    
+    # Allocate array for local data
+    total_samples = len(z_indices) * len(y_indices) * len(x_indices)
+    local_data = np.empty((total_samples, n_features), dtype=np.float32)
+    
+    # Loop through each feature file
+    for i, path in enumerate(loadpaths):
+        data_memmap = np.memmap(path, dtype=np.float32, mode='r', shape=(nz, ny, nx))
+        data_chunk = data_memmap[z_start:z_end:nzskip, ::nyskip, :-2:nxskip]  # adjust for SST padding
+        local_data[:, i] = data_chunk.reshape(-1)
 
-    # Scatter the data slices from rank 0 to all processes.
-    local_data = comm.scatter(split_data, root=0)
-    # Flatten the local data; each row will have n_features (i.e. one value per loaded file)
-    local_data = local_data.reshape(-1, n_features)
-
-    # Scatter the coordinate slices.
-    local_coords = comm.scatter(split_coords, root=0)
+    # Generate local coordinates for histogram
+    zz, yy, xx = np.meshgrid(z_indices, y_indices, x_indices, indexing='ij')
+    local_coords = np.stack((zz, yy, xx), axis=-1)  # shape (nz_chunk, ny_chunk, nx_chunk, 3)
     local_coords = local_coords.reshape(-1, 3)
 
     return local_data, local_coords
@@ -154,9 +144,6 @@ def mpi_kmeans(local_data, n_clusters, batch_size=10000, n_init=10, max_iter=100
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    if rank == 0:
-        print(f"Total processors: {size}")
-
     # Start timing for MPI K-Means
     mpi_start_time = MPI.Wtime()
 
@@ -197,8 +184,8 @@ def mpi_kmeans(local_data, n_clusters, batch_size=10000, n_init=10, max_iter=100
     mpi_end_time = MPI.Wtime()
     mpi_time = mpi_end_time - mpi_start_time
 
-    if rank == 0:
-        print(f"Parallel (MPI) K-Means Time: {mpi_time:.4f} seconds")
+    # if rank == 0:
+    #     print(f"Parallel (MPI) K-Means Time: {mpi_time:.4f} seconds")
 
     return cluster_centers
 
@@ -292,12 +279,12 @@ def extract_local_subcube_totals(coords, data_node_strength, subcube_size):
     """
     nxsl, nysl, nzsl = subcube_size
     subcube_totals = defaultdict(float)
-    for (x, y, z), strength in zip(coords, data_node_strength):
+    for (z, y, x), strength in zip(coords, data_node_strength):
         cube_id = (int(x // nxsl), int(y // nysl), int(z // nzsl))
         subcube_totals[cube_id] += strength
     return subcube_totals
 
-def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cubes, batch_size=10000, n_init=10, max_iter=100, n_iters=10):
+def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, nskips, n_clusters, n_cubes, batch_size=10000, n_init=10, max_iter=100, n_iters=10):
     """
     Parallel maxEnt hypercube selection using k-means clustering using MPI4PY + MiniBatchKMeans.
 
@@ -323,15 +310,15 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
         print(f"Total processors: {size}")
 
     # Load dataset slice for each MPI rank
-    local_data, local_coords = load_data_mpi(comm, loadpath, nx, ny, nz, rank, size)
+    local_data, local_coords = load_data_mpi(comm, loadpath, nx, ny, nz, rank, size, nskips)
 
     # Start timing for MPI K-Means
     mpi_start_time = MPI.Wtime()
 
     # 0. Parallel k-means using MiniBatchKMeans
     cluster_centers = mpi_kmeans(local_data, n_clusters=n_clusters, batch_size=int(4096/size), n_init=20, max_iter=10, n_iters=10)
-    print("cluster_centers:", cluster_centers)
-    print("type(cluster_centers):", type(cluster_centers))
+    # print("cluster_centers:", cluster_centers)
+    # print("type(cluster_centers):", type(cluster_centers))
     cluster_centers = cluster_centers[np.lexsort(tuple(cluster_centers[:, i] for i in range(cluster_centers.shape[1]-1, -1, -1)))]
 
     # Stop timing
@@ -346,22 +333,14 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
     local_labels = pairwise_distances_argmin(local_data, cluster_centers)
 
     # 2. Compute local histograms for each label
-    start_allreduce = time.time()
     local_min = np.min(local_data)
     local_max = np.max(local_data)
     global_min = comm.allreduce(local_min, op=MPI.MIN)
     global_max = comm.allreduce(local_max, op=MPI.MAX)
     bin_range = (global_min, global_max)
     num_bins = 10
-    mpi_start_time = MPI.Wtime()
     local_histograms = compute_local_histograms(local_data, local_labels, n_clusters, num_bins, bin_range)
-    mpi_end_time = MPI.Wtime()
-    mpi_time = mpi_end_time - mpi_start_time
-
-    if rank == 0:
-        print(f"local_histograms Time: {mpi_time:.4f} seconds", flush=True)
-        print(f"local_histograms (rank {rank}): {len(local_histograms)}", flush=True)
-
+    
     # 3. Reduce local histograms to global histogram for all lables
     global_histograms = reduce_histograms(comm, local_histograms, n_clusters)
 
@@ -409,9 +388,9 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, n_clusters, n_cube
 
         sampled_indices = np.random.choice(len(subcube_ids), size=n_cubes, replace=False, p=probabilities)
         sampled_subcubes = [subcube_ids[i] for i in sampled_indices]
+        print("Sampled subcube IDs:", sampled_subcubes)
     else:
         sampled_subcubes = None
 
-    print("Sampled subcube IDs:", sampled_subcubes)
     sampled_subcubes = comm.bcast(sampled_subcubes, root=0)
     return sampled_subcubes

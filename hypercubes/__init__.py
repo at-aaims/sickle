@@ -44,12 +44,13 @@ def get_hypercube_extractor(method, **selector_kwargs):
         else:
             from .maxent_sequential import maxent_hypercubes as maxent_func
 
-        def selector_func(indices, num_cubes, nx, ny, nz, hx, hy, hz, **kwargs):
+        def selector_func(indices, num_cubes, nx, ny, nz, hx, hy, hz, nskips, **kwargs):
             sampled_subcubes = maxent_func(
                 kwargs["loadpaths"],
                 nx, ny, nz,
                 hx, hy, hz,
-                n_clusters=10,
+                nskips,
+                n_clusters=kwargs["num_clusters"],
                 n_cubes=num_cubes,
                 batch_size=1024,
                 n_init=20,
@@ -67,7 +68,7 @@ def get_hypercube_extractor(method, **selector_kwargs):
         raise ValueError(f"Unsupported hypercube selection method: {method}")
 
     # --- The extractor closure ---
-    def extractor(loadpaths, nbytes, file_shape, cube_shape, num_cubes):
+    def extractor(loadpaths, nbytes, file_shape, cube_shape, nskips, num_cubes, num_clusters):
         nx, ny, nz = file_shape
         hx, hy, hz = cube_shape
 
@@ -76,11 +77,12 @@ def get_hypercube_extractor(method, **selector_kwargs):
         num_y = ny // hy
         num_z = nz // hz
 
-        # Build a list of all hypercube indices.
+        # Build a list of all hypercube indices. 
+        # Need to flip order of x and z to be consistent with row-major order of data (z is slowest).
         indices = [(ix, iy, iz)
-                   for ix in range(num_x)
+                   for iz in range(num_z)
                    for iy in range(num_y)
-                   for iz in range(num_z)]
+                   for ix in range(num_x)]
 
         # Determine selected indices.
         if num_cubes is not None and num_cubes <= len(indices):
@@ -90,7 +92,9 @@ def get_hypercube_extractor(method, **selector_kwargs):
                 indices, num_cubes,
                 nx=nx, ny=ny, nz=nz,
                 hx=hx, hy=hy, hz=hz,
-                loadpaths=loadpaths
+                nskips=nskips,
+                loadpaths=loadpaths,
+                num_clusters=num_clusters
             )
         else:
             sel_indices = np.arange(len(indices))
