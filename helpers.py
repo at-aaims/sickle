@@ -7,6 +7,23 @@ from constants import *
 
 from matplotlib import pyplot as plt
 
+import builtins
+from mpi4py import MPI
+
+def setup_rank_print():
+    """
+    Override the built-in print function to only print from rank 0.
+    """
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    original_print = builtins.print
+
+    def rank_print(*args, force=False, **kwargs):
+        if rank == 0 or force:
+            original_print(*args, **kwargs)
+
+    builtins.print = rank_print
+
 
 def compute_euclidean_distance(x, y):
     return np.sqrt(x**2 + y**2)
