@@ -146,6 +146,7 @@ class GESTSDataLoader(DataLoader):
                 # --- Use hypercube extraction ---
                 # Compute hypercube IDs using one of the variables (for example, the first cv variable)
                 hypercubeIDs = self._get_hypercube_IDs(cv_labels[0], ts)
+                print(f"timestep {ts} hypercubeIDs {hypercubeIDs}")
                 for i, var in enumerate(cv_labels):
                     cv_arr[j, :, i] = self._load_and_process_hypercubes(var, ts, hypercubeIDs)
                 for i, var in enumerate(x_labels):

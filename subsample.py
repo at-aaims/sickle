@@ -22,6 +22,7 @@ def extract_yz_plane(X, timestep, feature_index, x_index, nx=128, ny=64, nz=128)
 
 def subsample_data(X, Y, x, y, z, subsampler, args):
     num_timesteps = X.shape[0]
+    print(f"\n\n\n\033[92m \U0001F680 Starting subsampling using {args.method} method\033[0m")
     print(f"num_timesteps: {num_timesteps}")
 
     if args.method == "full":
@@ -45,6 +46,7 @@ def subsample_data(X, Y, x, y, z, subsampler, args):
     for timestep in range(0, num_timesteps - args.window + 1, args.window):
         indices = subsampler.sample(args.num_samples, timestep)
         subsampled_indices_list.append(indices)
+        print(f"timestep: {timestep}")
 
         #if args.plot and args.method != "full":
         #    plot_samples(indices, x, y, z, timestep, args)
@@ -79,6 +81,7 @@ if __name__ == "__main__":
     extractor = get_hypercube_extractor(args.hypercubes, use_parallel=True)
 
     # Load the data
+    print(f"\n\n\n\033[92m \U0001F680 Loading data / extracting hypercubes using {args.hypercubes} method\033[0m")
     X, Y, cv, x, y, z = load_data(args, extractor=extractor)
     num_timesteps = X.shape[0]
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
