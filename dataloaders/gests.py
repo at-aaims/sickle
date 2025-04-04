@@ -149,30 +149,41 @@ class GESTSDataLoader(DataLoader):
                 print(f"timestep {ts} hypercubeIDs {hypercubeIDs}")
                 for i, var in enumerate(cv_labels):
                     cv_arr[j, :, i] = self._load_and_process_hypercubes(var, ts, hypercubeIDs)
-                for i, var in enumerate(x_labels):
+
+                dest_col = 0
+                for var in x_labels:
                     subcube = self._load_and_process_hypercubes(var, ts, hypercubeIDs)
                     if var == 'velocity':
                         # If velocity has multiple channels, spread them across consecutive channels.
                         #subcube = subcube.reshape(-1, 3)
-                        X[j, :, i:i+3] = subcube
+                        X[j, :, dest_col:dest_col+3] = subcube
+                        dest_col += 3
                     else:
-                        X[j, :, i] = subcube
+                        X[j, :, dest_col] = subcube
+                        dest_col += 1
+
                 for i, var in enumerate(y_labels):
                     Y[j, :, i] = self._load_and_process_hypercubes(var, ts, hypercubeIDs)
+
             else:
                 # --- Fallback to full subcube extraction ---
                 for i, var in enumerate(cv_labels):
                     var_prefix = self.varmap.get(var, var)
                     cv_arr[j, :, i] = self._read_binary_cube(os.path.join(self.path, var, f"cube_{var_prefix}.{ts}"),
                                                               has_vector=False)
-                for i, var in enumerate(x_labels):
+                for var in x_labels:
                     var_prefix = self.varmap.get(var, var)
                     subcube = self._read_binary_cube(os.path.join(self.path, var, f"cube_{var_prefix}.{ts}"),
                                                      has_vector=(var == 'velocity'))
+
+                    dest_col = 0
                     if var == 'velocity':
-                        X[j, :, i:i+3] = subcube
+                        X[j, :, dest_col:dest_col+3] = subcube
+                        dest_col += 3
                     else:
-                        X[j, :, i] = subcube
+                        X[j, :, dest_col] = subcube
+                        dest_col += 1
+
                 for i, var in enumerate(y_labels):
                     var_prefix = self.varmap.get(var, var)
                     Y[j, :, i] = self._read_binary_cube(os.path.join(self.path, var, f"cube_{var_prefix}.{ts}"),
