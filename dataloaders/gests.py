@@ -200,7 +200,7 @@ DataLoader = GESTSDataLoader
 
 if __name__ == "__main__":
     # Example usage for testing:
-    dataset_path = "/lustre/orion/tur120/world-shared/daludot/phy_cube_data/2048"
+    dataset_path = "/path/to/phy_cube_data/2048"
     # Make sure your args object includes the necessary fields, for example:
     class DummyArgs:
         def __init__(self):
