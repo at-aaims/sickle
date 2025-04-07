@@ -25,6 +25,7 @@ class GESTSDataLoader(DataLoader):
         self.subcube_origin = (0, 0, 0)  # Default subcube origin
         self.varmap = dict(enstrophy='enst', velocity='uvw', pressure='p', dissipation='diss')
         self.verbose = getattr(args, 'verbose', False)
+        nskips = (self.args.nxskip, self.args.nyskip, self.args.nzskip)
 
         # Use the extractor function if provided.
         if extractor:
@@ -34,6 +35,8 @@ class GESTSDataLoader(DataLoader):
                 dims_sl=self.subcube_size,
                 nbytes=args.nbytes,
                 num_hypercubes=args.num_hypercubes,
+                num_clusters=self.args.num_clusters,
+                nskips=nskips,
                 use_parallel=True
             )
         else:
