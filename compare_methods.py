@@ -11,20 +11,28 @@ from scipy.stats import gaussian_kde
 if __name__ == "__main__":
 
     # Load the data
+    print("loading data")
     X, Y, cv, x, y, z = load_data(args)
+    print("done loading")
     num_timesteps = X.shape[0] // args.window * args.window + 1
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
 
-    ts = 4 # timestep
+    ts = 0
 
     histograms = {}  # Store histogram data for plotting
     for method in ["full", "random", "uips", "maxent"]:
         # Get the appropriate subsample function
-        subsampler = get_subsampler(X, args)
-        
+        #subsampler = get_subsampler(X, args)
+
+        # Define subsample function based on method
+        if args.method == "maxent":
+            subsampler = get_subsampler(X, args, coords=(x, y, z), cv=cv)
+        else:
+            subsampler = get_subsampler(X, args)
+
         # Apply the subsampling function to get indices
         indices = subsampler.sample(args.num_samples, ts)
-        
+
         # Extract the subsampled cluster variable
         subsampled_cv = cv[ts, indices]
         histograms[method] = subsampled_cv
@@ -44,11 +52,12 @@ if __name__ == "__main__":
         color = colors[i]
 
         xmin, xmax = np.min(subsampled_cv), np.max(subsampled_cv)
+        print(f"xmin: {xmin}, xmax: {xmax}")
         bins = np.linspace(xmin, xmax, args.bins)
 
         plt.hist(subsampled_cv, bins=bins, alpha=0.6, label=method, density=True, color=color)
 
-        kde = gaussian_kde(subsampled_cv)
+        kde = gaussian_kde(subsampled_cv.T)
         kde_values = kde(bins)
         #kde_values_normalized = kde_values / np.max(kde_values)
         plt.plot(bins, kde_values, label=method, color=color)
@@ -59,15 +68,11 @@ if __name__ == "__main__":
 
     fs = 10
 
-    xlabel = {'p': 'Pressure', 'pv': 'Potential Vorticity'}
+    xlabel = {'p': 'Pressure', 'pv': 'Potential Vorticity', 'enstrophy': 'Enstrophy'}
 
     # Set plot title and labels
-    #plt.title("Histogram of Potential Vorticity")
-    plt.title("P1F4R32", fontsize=fs)
-    #plt.title("OF2DCyl")
-    #plt.xlabel("Potential Vorticity", fontsize=fs)
+    plt.title(args.dtype, fontsize=fs)
     plt.xlabel(xlabel[args.cluster_var[0]], fontsize=fs)
-    #plt.xlabel("Vorticity")
     plt.ylabel("Probability Density", fontsize=fs)
     #plt.yscale('log')
 
