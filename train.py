@@ -21,6 +21,9 @@ from energy import EnergyMonitor
 from helpers import scale, compute_memory, get_calling_filename
 from plotting import plot_ML_outputs, plot_learning_curve
 
+from helpers import setup_rank_print
+setup_rank_print()
+
 outfilename = f"subsampled_{args.fileprefix}.npz"
 
 prec_dict = {"int8": torch.int8,
@@ -95,7 +98,7 @@ class Trainer:
         print(f"Trainer: Rank {self.rank}: Device set to {self.device}")
         
         # Setup data loaders with DistributedSampler
-        self.train_sampler = DistributedSampler(TensorDataset(X_train, Y_train), num_replicas=self.world_size, rank=self.rank)
+        self.train_sampler = DistributedSampler(TensorDataset(X_train, Y_train), num_replicas=self.world_size, rank=self.rank, shuffle=args.shuffle)
 
         self.train_loader = DataLoader(TensorDataset(X_train, Y_train), batch_size=args.batch, sampler=self.train_sampler)
         if self.rank == 0:
@@ -267,7 +270,8 @@ def main():
         X = np.expand_dims(X, axis=1)  # X becomes (B, 1, 32, 32, 32, 4)
     if len(Y.shape) == 5:
         Y = np.expand_dims(Y, axis=1)  # Y becomes (B, 1, 32, 32, 32, 1)
-
+    print(f"After dim exp X: {X.shape}; Y: {Y.shape}", flush=True)
+    
     if args.method == "full":
         # Transpose from (B, 1, 32, 32, 32, 4) to (B, 1, 4, 32, 32, 32)
         X = X.transpose(0, 1, 5, 2, 3, 4)
@@ -275,8 +279,12 @@ def main():
     else:
         # Other method's transpose for X (and Y if needed) goes here.
         X = X.transpose(0, 1, 3, 2)
+        if len(Y.shape) > 4:
+            Y = Y.transpose(0, 1, 5, 2, 3, 4)
+        else:
+            Y = Y.transpose(0, 1, 3, 2)
 
-    print(f"X: {X.shape}; Y: {Y.shape}", flush=True)
+    print(f"After transpose of vars: X: {X.shape}; Y: {Y.shape}", flush=True)
 
     # train:val split
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=args.test_frac, shuffle=args.shuffle)

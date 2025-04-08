@@ -148,7 +148,7 @@ def create_sequences(X, Y, args):
     Create time sequences of a given window size (W) from the input arrays X and Y with specified overlap.
 
     X: [T * num_cubes, [X,Y,Z]-or-NSAMPLES, C] -> [B, W, [X,Y,Z]-or-NSAMPLES, C]
-    Y: [T * num_cubes, [X,Y,Z]-or-NSAMPLES, C] -> [B, W, [X,Y,Z]-or-NSAMPLES, C]
+    Y: [T * num_cubes, [X,Y,Z]-or-NSAMPLES-or-1, C] -> [B, W, [X,Y,Z]-or-NSAMPLES-or-1, C]
     W: window size
     B: number of sequences (or total batch)
     """
@@ -160,12 +160,12 @@ def create_sequences(X, Y, args):
 
     # Get dimensions of X & Y
     if args.method == "full":
-        nt, nx, ny, nz, nvars_X = X.shape
+        nt_nhyp, nx, ny, nz, nvars_X = X.shape
     else:
-        nt, nsamples, nvars_X = X.shape
+        nt_nhyp, nsamples, nvars_X = X.shape
 
     try:
-        nt = int(nt / args.num_hypercubes)
+        nt = nt_nhyp // args.num_hypercubes
     except ZeroDivisionError:
         raise ValueError("Invalid number of hypercubes; must be non-zero.")
 
@@ -176,9 +176,11 @@ def create_sequences(X, Y, args):
 
     # Determine sequence info
     stride = window_size - overlap
+    print(f"stride: {stride}")
     assert stride > 0, f"window_size ({window_size}) must be > overlap ({overlap})"
 
     num_seqs_per_cube = (nt - window_size) // stride + 1
+    print(f"num_seqs_per_cube {num_seqs_per_cube}; nt {nt}; window_size {window_size}")
     num_sequences = num_seqs_per_cube * args.num_hypercubes
 
     # Initialize sequence arrays
@@ -188,7 +190,7 @@ def create_sequences(X, Y, args):
         X_sequences = np.zeros((num_sequences, window_size, nsamples, nvars_X))
 
     if field_prediction_type == FieldPredictionType.GLOBAL:  # global quantity prediction
-        Y_sequences = np.zeros((num_sequences, window_size, 1, nvars_Y))
+        Y_sequences = np.zeros((num_seqs_per_cube, window_size, 1, nvars_Y))
     elif field_prediction_type == FieldPredictionType.LOCAL:  # local field prediction
         if args.method == "full":
             raise Exception("For baseline full field input, prediction cannot be subsampled. Change `args.target`.")

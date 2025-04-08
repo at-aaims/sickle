@@ -24,18 +24,20 @@ def subsample_data(X, Y, x, y, z, subsampler, args):
     num_timesteps = X.shape[0]
     print(f"\n\n\n\033[92m \U0001F680 Starting subsampling using {args.method} method\033[0m")
     print(f"num_timesteps: {num_timesteps}")
+    num_samples_total = args.num_samples * args.num_hypercubes
+    print(f"num_samples_total: {num_samples_total}")
 
     if args.method == "full":
-        Xout = np.zeros((num_timesteps, args.num_samples * args.num_hypercubes, X.shape[2]))
+        Xout = np.zeros((num_timesteps, X.shape[1], X.shape[2]))
     else:
-        Xout = np.zeros((num_timesteps, args.num_samples, X.shape[2]))
+        Xout = np.zeros((num_timesteps, num_samples_total, X.shape[2]))
 
     if args.field_prediction_type == FieldPredictionType.GLOBAL:
         Yout = np.zeros((num_timesteps, 1, Y.shape[2]))
     elif args.field_prediction_type == FieldPredictionType.LOCAL:
         if args.method == "full":
             raise Exception("For baseline full field input, prediction cannot be subsampled. Change `args.target`.")
-        Yout = np.zeros((num_timesteps, args.num_samples, Y.shape[2]))
+        Yout = np.zeros((num_timesteps, num_samples_total, Y.shape[2]))
     elif args.field_prediction_type == FieldPredictionType.FULL:
         Yout = np.zeros((num_timesteps, Y.shape[1], Y.shape[2]))
     else:
@@ -44,7 +46,7 @@ def subsample_data(X, Y, x, y, z, subsampler, args):
     subsampled_indices_list = []  # Store subsampled indices for later use
 
     for timestep in range(0, num_timesteps - args.window + 1, args.window):
-        indices = subsampler.sample(args.num_samples, timestep)
+        indices = subsampler.sample(num_samples_total, timestep)
         subsampled_indices_list.append(indices)
         print(f"timestep: {timestep}")
 
@@ -53,7 +55,10 @@ def subsample_data(X, Y, x, y, z, subsampler, args):
 
         for sub_timestep in range(args.window):
             ts = timestep + sub_timestep
-            Xout[ts, :] = X[ts, indices]
+            if args.method == "full":
+                subsampled_X = X[ts, :, :]
+            else:
+                subsampled_X = X[ts, indices]
 
             if args.field_prediction_type == FieldPredictionType.GLOBAL:
                 subsampled_Y = Y[ts, :]
@@ -61,6 +66,8 @@ def subsample_data(X, Y, x, y, z, subsampler, args):
                 subsampled_Y = Y[ts, :, :]
             else:
                 subsampled_Y = Y[ts, indices, :]
+            
+            Xout[ts, :] = subsampled_X
             Yout[ts, :] = subsampled_Y
 
             #if args.plot:
@@ -72,7 +79,13 @@ def subsample_data(X, Y, x, y, z, subsampler, args):
 
 
 if __name__ == "__main__":
-
+    """
+    Output subsampled data for ML training.
+    Output data shape:
+        - Xout: [(T * num_cubes), [X,Y,Z]-or-NSAMPLES, C]
+        - Yout: [(T * num_cubes), [X,Y,Z]-or-NSAMPLES-or-1, C]
+    """
+ 
     # Ensure required directories exist
     check_and_create_dirs(args.output_dir)
     check_and_create_dirs(args.plot_dir)
@@ -113,8 +126,15 @@ if __name__ == "__main__":
     num_timesteps *= args.num_hypercubes
     if args.method == "full":
         Xout = Xout.reshape(num_timesteps, len(x), len(y), len(z), Xout.shape[-1])
+    else:
+        Xout = Xout.reshape(num_timesteps, args.num_samples, Xout.shape[-1])
+    
     if args.field_prediction_type == FieldPredictionType.FULL:
         Yout = Yout.reshape(num_timesteps, len(x), len(y), len(z), Yout.shape[-1])
+    elif args.field_prediction_type == FieldPredictionType.LOCAL:
+        Yout = Yout.reshape(num_timesteps, args.num_samples, Yout.shape[-1])
+
+    print(f"After reshaping: Xout: {Xout.shape}; Yout: {Yout.shape}")
 
     # Save output
     outfilename = f"subsampled_{args.fileprefix}.npz"
