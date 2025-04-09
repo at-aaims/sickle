@@ -310,9 +310,13 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, nskips, n_clusters
         print(f"Total processors: {size}")
 
     # Load dataset slice for each MPI rank
+    if rank == 0:
+        print(f"Distributing data for parallel k-means...")
     local_data, local_coords = load_data_mpi(comm, loadpath, nx, ny, nz, rank, size, nskips)
 
     # Start timing for MPI K-Means
+    if rank == 0:
+        print(f"Parallel k-means...")
     mpi_start_time = MPI.Wtime()
 
     # 0. Parallel k-means using MiniBatchKMeans
@@ -388,7 +392,7 @@ def maxent_hypercubes(loadpath, nx, ny, nz, nxsl, nysl, nzsl, nskips, n_clusters
 
         sampled_indices = np.random.choice(len(subcube_ids), size=n_cubes, replace=False, p=probabilities)
         sampled_subcubes = [subcube_ids[i] for i in sampled_indices]
-        print("Sampled subcube IDs:", sampled_subcubes)
+        # print("Sampled subcube IDs:", sampled_subcubes)
     else:
         sampled_subcubes = None
 

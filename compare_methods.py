@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     fs = 10
 
-    xlabel = {'p': 'Pressure', 'pv': 'Potential Vorticity', 'enstrophy': 'Enstrophy'}
+    xlabel = {'p': 'Pressure', 'pv': 'Potential Vorticity', 'enstrophy': 'Enstrophy', 'wz': 'Vorticy ($\omega_z$)'}
 
     # Set plot title and labels
     plt.title(args.dtype, fontsize=fs)

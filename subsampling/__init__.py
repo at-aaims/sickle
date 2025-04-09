@@ -15,19 +15,20 @@ class FullSubsampler:
         return self.indices
 
 
-def get_subsampler(data, args, **kwargs):
+def get_subsampler(data, args, method=None, **kwargs):
     """Factory function to select subsampler based on args.method"""
-    if args.method == "maxent":
+    method = method or args.method
+    if method == "maxent":
         return MaxentSubsampler(data, args, **kwargs)
-    elif args.method == "random":
+    elif method == "random":
         return RandomSubsampler(data, args)
-    elif args.method == "uips":
+    elif method == "uips":
         return PhaseSpaceSubsampler(data, args)
-    elif args.method == "stratified":
+    elif method == "stratified":
         return StratifiedSubsampler(data, args)
-    elif args.method == "lhs":
+    elif method == "lhs":
         return LatinHypercubeSubsampler(data, args)
-    elif args.method == "full":
+    elif method == "full":
         return FullSubsampler(data, args)
     else:
         raise ValueError(f"Unsupported sampling method: {args.method}")
