@@ -21,14 +21,12 @@ if __name__ == "__main__":
 
     histograms = {}  # Store histogram data for plotting
     for method in ["full", "random", "uips", "maxent"]:
-        # Get the appropriate subsample function
-        #subsampler = get_subsampler(X, args)
 
         # Define subsample function based on method
         if args.method == "maxent":
-            subsampler = get_subsampler(X, args, coords=(x, y, z), cv=cv)
+            subsampler = get_subsampler(X, args, method=method, coords=(x, y, z), cv=cv)
         else:
-            subsampler = get_subsampler(X, args)
+            subsampler = get_subsampler(X, args, method=method)
 
         # Apply the subsampling function to get indices
         indices = subsampler.sample(args.num_samples, ts)
