@@ -100,9 +100,9 @@ if __name__ == "__main__":
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
 
     # Check that sampling will work with current settings
-    time_range = range(0, num_timesteps - args.window + 1, args.window)
-    if len(time_range) == 0:
-        raise ValueError("Error: The timestep loop will not execute because the computed range is empty. Check 'num_timesteps' and 'args.window'.")
+    #time_range = range(0, num_timesteps - args.window + 1, args.window)
+    #if len(time_range) == 0:
+    #    raise ValueError("Error: The timestep loop will not execute because the computed range is empty. Check 'num_timesteps' and 'args.window'.")
 
     # Define subsample function based on method
     if args.method == "maxent":

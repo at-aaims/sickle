@@ -42,9 +42,16 @@ def load_data(args, **kwargs):
 
     dl = DataLoaderClass(args, **kwargs)
     x, y, z = dl.load_xyz()
-    X, Y, cv = dl.load_multiple_timesteps(
-        args.write_interval, args.num_timesteps, target=args.target, cv=args.cluster_var
-    )
+
+    #X, Y, cv = dl.load_multiple_timesteps(
+    #    args.write_interval, args.num_timesteps, target=args.target, cv=args.cluster_var
+    #)
+
+    # Use load_snapshot instead of load_multiple_timesteps for static data.
+    for cubeid in range(1):
+        print(f'cubeid: {cubeid}')
+        X, Y, cv = dl.load_snapshot(cubeid=cubeid)
+
     return X, Y, cv, x, y, z
 
 # -------------------------------------------------------------------
