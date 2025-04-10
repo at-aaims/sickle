@@ -56,31 +56,88 @@ class GESTSDataLoader(DataLoader):
         """Extract available timesteps from file names."""
         return sorted(set(int(f.split('.')[-1]) for f in file_names))
 
-    def _read_binary_cube(self, filename, has_vector=False):
-        """Read a binary cube file using memory mapping for large files and extract a subcube."""
-        dtype = np.float32  # Assuming 32-bit floating point precision
-        shape = (3, *self.grid_size) if has_vector else self.grid_size  # Use full grid size
+    def _read_binary_cube(self, filename, cubeid=0, has_vector=False):
+        """
+        Read a binary cube file using memmapping, extracting the subcube corresponding to the provided cubeid.
+        
+        Parameters:
+          filename (str): Path to the binary cube file.
+          cubeid (int): Index (0 to 7) of the cube within the file. For 2048^3 datasets, this is always 0.
+          has_vector (bool): Flag indicating if the data is a vector (velocity) which requires special handling.
+        Returns:
+          subcube: A flattened array containing the extracted subcube data.
+        """
+        dtype = np.float32  # 32-bit floating point precision assumed
 
-        if self.verbose:
-            print(f"Memory-mapping file: {filename} with expected shape: {shape}")
+        # Determine the base shape of the full cube stored in the file.
+        # For the 8192^3 case, "grid_size" is the full shape for the file (e.g. (8192, 8192, 8192) 
+        # or the equivalent regional shape in your loader), but note that each file is divided into 8 cubes along X.
+        base_shape = self.grid_size
+        
+        # Determine number of cubes in this file (should be 8 for 8192³ datasets, 1 for 2048³).
+        num_cubes_in_file = 8 if base_shape[0] > self.subcube_size[0] else 1
 
-        data = np.memmap(filename, dtype=dtype, mode='r', shape=shape, order='F')
-        if self.verbose:
-            print(f"Loaded file {filename}")
+        # For files with 8 cubes, assume they are arranged as 8 X-neighbors.
+        # Compute the size of one cube along X.
+        cube_x_size = base_shape[0] // num_cubes_in_file
+        cube_shape = (cube_x_size, base_shape[1], base_shape[2])
 
-        # Extract subcube region
-        x0, y0, z0 = self.subcube_origin
-        x1, y1, z1 = x0 + self.subcube_size[0], y0 + self.subcube_size[1], z0 + self.subcube_size[2]
+        # Calculate the number of bytes per cube.
+        itemsize = np.dtype(dtype).itemsize
+        bytes_per_cube = np.prod(cube_shape) * itemsize
         if has_vector:
+            # For velocity, there are 3 components stored one after the other.
+            bytes_per_cube *= 3
+
+        # Calculate file offset based on cubeid.
+        cube_offset = cubeid * bytes_per_cube
+
+        if self.verbose:
+            print(f"Reading file {filename} cubeid {cubeid} with offset {cube_offset} bytes, expected shape {cube_shape}, vector: {has_vector}")
+
+        # Define shape for memmap. For velocity, include channel dimension.
+        if has_vector:
+            shape = (3, *cube_shape)  # (3, X, Z, Y) because data is stored in X-Z-Y order
+        else:
+            shape = cube_shape  # (X, Z, Y)
+
+        # Create memmap with the specified offset. Note order='F' used by default.
+        data = np.memmap(filename, dtype=dtype, mode='r', offset=cube_offset, shape=shape, order='F')
+
+        # Rearranging data from stored X-Z-Y order to the expected X-Y-Z order.
+        if not has_vector:
+            # For scalar data, simply swap the last two axes.
+            # For a shape (X, Z, Y), transposing axes (0, 2, 1) yields (X, Y, Z).
+            data = np.transpose(data, (0, 2, 1))
+        else:
+            # For velocity, data shape is (3, X, Z, Y). Process each component separately.
+            for comp in range(3):
+                data[comp, :, :, :] = np.transpose(data[comp, :, :, :], (0, 2, 1))
+
+        # Compute subcube origin based on fileid and cubeid.
+        # This should yield the starting indices (x0, y0, z0) for the subcube within the cube.
+        x0, y0, z0 = self.compute_subcube_origin(filename, cubeid)
+        x1 = x0 + self.subcube_size[0]
+        y1 = y0 + self.subcube_size[1]
+        z1 = z0 + self.subcube_size[2]
+
+        if self.verbose:
+            print(f"Extracting subcube from indices x:{x0}-{x1}, y:{y0}-{y1}, z:{z0}-{z1}")
+
+        # Extract the subcube region.
+        if has_vector:
+            # For vector data, extract and then flatten such that channels become features.
             subcube = data[:, x0:x1, y0:y1, z0:z1]
+            subcube = subcube.reshape(3, -1).T
         else:
             subcube = data[x0:x1, y0:y1, z0:z1]
+            subcube = subcube.reshape(-1)
 
         if self.verbose:
-            print(f"Extracted sub-region shape: {subcube.shape}")
+            print(f"Extracted subcube shape: {subcube.shape}")
+        
+        return subcube
 
-        # For vector data, reshape so that channels become features.
-        return subcube.reshape(3, -1).T if has_vector else subcube.reshape(-1)
 
     # --- New helper methods for hypercube extraction ---
     def _get_hypercube_IDs(self, variable, ts):
