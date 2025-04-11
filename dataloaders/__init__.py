@@ -42,11 +42,9 @@ def load_data(args, **kwargs):
 
     dl = DataLoaderClass(args, **kwargs)
     x, y, z = dl.load_xyz()
-
     X, Y, cv = dl.load_multiple_timesteps(
         args.write_interval, args.num_timesteps, target=args.target, cv=args.cluster_var
     )
-
     return X, Y, cv, x, y, z
 
 # -------------------------------------------------------------------
