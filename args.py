@@ -57,7 +57,7 @@ choices = ['StandardScaler', 'MinMaxScaler', 'PowerTransformer', 'None']
 parser.add_argument('--xscaler', type=str, default='MinMaxScaler', choices=choices, help='scaler function')
 parser.add_argument('--yscaler', type=str, default='StandardScaler', choices=choices, help='scaler function')
 parser.add_argument('--yscalefactor', type=float, default=3, help='scalefactor to divide target by before training')
-parser.add_argument('--dtype', type=str, default='openfoam', choices=['openfoam', 'csv', 'npz', 'sst-binary', 'gests'], help='data type')
+parser.add_argument('--dtype', type=str, default='openfoam', choices=['openfoam', 'csv', 'npz', 'sst-binary', 'gests', 'gests+'], help='data type')
 parser.add_argument('--test_frac', type=float, default=0.1, help='fraction of data to hold out for testing')
 parser.add_argument('--target', type=str, default='wz', choices=['drag', 'p', 'p_full', 'wz', 'tke'], help='training target')
 parser.add_argument('--timesteps', nargs='+', type=float, default=None, help='Specific timesteps to load (e.g., --timesteps 28.04 29.24)')

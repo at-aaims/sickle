@@ -27,11 +27,6 @@ class GESTSDataLoader(DataLoader):
         self.verbose = getattr(args, 'verbose', False)
         nskips = (self.args.nxskip, self.args.nyskip, self.args.nzskip)
 
-        # Save copies of the variable lists so they don’t get modified elsewhere
-        self.input_vars = list(args.input_vars)
-        self.output_vars = list(args.output_vars)
-        self.cluster_var = list(args.cluster_var)
-
         # Use the extractor function if provided.
         if extractor:
             self.hypercube_handler = HypercubeHandler(
@@ -47,115 +42,56 @@ class GESTSDataLoader(DataLoader):
         else:
             self.hypercube_handler = None
 
-    def _get_filenames(self, variable, cubeid=0, verbose=True):
+    def _get_filenames(self, variable, verbose=True):
+        """Retrieve sorted filenames for a given variable."""
         var_prefix = self.varmap.get(variable, variable)
-        # For the 8192 dataset, use the cubeid folder
-        var_path = os.path.join(self.path, str(cubeid))
+        var_path = os.path.join(self.path, variable)
         file_pattern = os.path.join(var_path, f'cube_{var_prefix}.*')
-        print("reading", file_pattern)
         files = sorted(glob.glob(file_pattern), key=lambda x: int(x.split('.')[-1]))
         if self.verbose:
-            print(f"Found {len(files)} files for variable: {variable} in folder: {var_path}")
+            print(f"Found {len(files)} files for variable: {variable}")
         return files
 
     def _extract_times(self, file_names):
         """Extract available timesteps from file names."""
         return sorted(set(int(f.split('.')[-1]) for f in file_names))
 
-    def _read_binary_cube(self, filename, cubeid=0, has_vector=False):
-        """
-        Read a binary cube file with support for multiple cubes within a single file.
-        
-        Parameters:
-          filename (str): Path to the binary cube file.
-          cubeid (int): Cube identifier from 0 to 7 (for the 8192 case). For 2048 datasets, default to 0.
-          has_vector (bool): True if data is a vector (e.g., velocity) with 3 components.
-        
-        Returns:
-          subcube: Flattened array of the extracted subcube.
-        """
-        dtype = np.float32
-        # Determine base grid dimensions.
-        base_shape = self.grid_size  # e.g., (8192, 8192, 8192) for the entire dataset.
-
-        # For 8192³, assume 8 cubes along X.
-        num_cubes_in_file = 8 if base_shape[0] > self.subcube_size[0] else 1
-        cube_x_size = base_shape[0] // num_cubes_in_file
-        cube_shape = (cube_x_size, base_shape[1], base_shape[2])
-        #print(f"For cubeid {cubeid}: grid_size={self.grid_size}, cube_x_size={cube_x_size}")
-
-        itemsize = np.dtype(dtype).itemsize
-        bytes_per_cube = np.prod(cube_shape) * itemsize
-        if has_vector:
-            bytes_per_cube *= 3  # For U-V-W components stored sequentially.
-            
-        cube_offset = cubeid * bytes_per_cube
+    def _read_binary_cube(self, filename, has_vector=False):
+        """Read a binary cube file using memory mapping for large files and extract a subcube."""
+        dtype = np.float32  # Assuming 32-bit floating point precision
+        shape = (3, *self.grid_size) if has_vector else self.grid_size  # Use full grid size
 
         if self.verbose:
-            print(f"Reading file {filename} at cubeid {cubeid} with offset {cube_offset}")
-            print(f"Expected cube shape: {cube_shape}, vector: {has_vector}")
+            print(f"Memory-mapping file: {filename} with expected shape: {shape}")
 
-        # Set up shape for memmap.
-        if has_vector:
-            # Data is stored as (3, X, Z, Y)
-            memmap_shape = (3, *cube_shape)
-        else:
-            # Data is stored as (X, Z, Y)
-            memmap_shape = cube_shape
-
-        data = np.memmap(filename, dtype=dtype, mode='r', offset=cube_offset, shape=memmap_shape, order='F')
-
-        if has_vector:
-            # For velocity, data is stored as (3, X, Z, Y).
-            # Convert the memmapped data to a writable array.
-            data = np.array(data, copy=True)
-            for comp in range(3):
-                data[comp, :, :, :] = np.transpose(data[comp, :, :, :], (0, 2, 1))
-        else:
-            data = np.transpose(data, (0, 2, 1))  # Now (X, Y, Z)
-                
-        # Compute the subcube origin based on fileid and cubeid.
-        # For example, call a helper function to convert these indices to an origin.
-        x0, y0, z0 = self.compute_subcube_origin(filename, cubeid)
-        x1 = x0 + self.subcube_size[0]
-        y1 = y0 + self.subcube_size[1]
-        z1 = z0 + self.subcube_size[2]
-        #print(f"Computed x0={x0}, x1={x1}")
-
+        data = np.memmap(filename, dtype=dtype, mode='r', shape=shape, order='F')
         if self.verbose:
-            print(f"Extracting subcube indices: x:{x0}-{x1}, y:{y0}-{y1}, z:{z0}-{z1}")
+            print(f"Loaded file {filename}")
 
-        # Extract subcube region.
+        # Extract subcube region
+        x0, y0, z0 = self.subcube_origin
+        x1, y1, z1 = x0 + self.subcube_size[0], y0 + self.subcube_size[1], z0 + self.subcube_size[2]
         if has_vector:
             subcube = data[:, x0:x1, y0:y1, z0:z1]
-            # Reshape so that each row is a feature vector (3 channels).
-            subcube = subcube.reshape(3, -1).T
         else:
             subcube = data[x0:x1, y0:y1, z0:z1]
-            subcube = subcube.reshape(-1)
 
         if self.verbose:
-            print(f"Final subcube shape: {subcube.shape}")
-        
-        return subcube
+            print(f"Extracted sub-region shape: {subcube.shape}")
 
+        # For vector data, reshape so that channels become features.
+        return subcube.reshape(3, -1).T if has_vector else subcube.reshape(-1)
+
+    # --- New helper methods for hypercube extraction ---
     def _get_hypercube_IDs(self, variable, ts):
         """
-        Compute hypercube IDs for a given variable and a simulated timestep (cubeid).
-        For the 8192 dataset, use the cubeid folder (e.g., "0", "1", etc.) since the files
-        are stored in that directory.
+        Compute hypercube IDs for a given variable at timestep ts.
+        We use one variable’s file as the basis.
         """
         var_prefix = self.varmap.get(variable, variable)
-        # For the 8192 dataset, self.grid_size[0] will be 8192.
-        file_path = os.path.join(self.path, str(ts), f"cube_{var_prefix}.{ts}")
-        # Use the older scheme: files are stored under a folder named after the variable.
-        #file_path = os.path.join(self.path, variable, f"cube_{var_prefix}.{ts}")
-
-        if self.verbose:
-            print(f"_get_hypercube_IDs: Using file path: {file_path}")
-        # Pass a list containing the file path to the hypercube handler.
+        file_path = os.path.join(self.path, variable, f"cube_{var_prefix}.{ts}")
+        # We pass a list containing this file path to the hypercube handler.
         return self.hypercube_handler.extract_ids([file_path])
-
 
     def _load_and_process_hypercubes(self, variable, ts, hypercubeIDs):
         var_prefix = self.varmap.get(variable, variable)
@@ -181,125 +117,82 @@ class GESTSDataLoader(DataLoader):
         return x, y, z
 
     def load_multiple_timesteps(self, write_interval, num_timesteps, target, cv, file_filter='*_*'):
+        """Load multiple variables from different timesteps, extracting only the subcube region.
+           If hypercube extraction is enabled, use that instead of reading the full subcube.
+        """
+        x_labels = self.args.input_vars
+        y_labels = self.args.output_vars
+        cv_labels = self.args.cluster_var
 
-        print("num timesteps", num_timesteps)
-        print("x_labels:", self.input_vars)
-        print("y_labels:", self.output_vars)
-        print("cv_labels:", self.cluster_var)
+        # Extract timesteps from available files (assuming all variables share timesteps)
+        file_names = self._get_filenames(x_labels[0])
+        t_labels = self._extract_times(file_names)
+        print('Available timesteps (t_labels):', t_labels)
+
+        if self.args.timesteps:
+            desired_timesteps = sorted(self.args.timesteps)
+            # Only keep timesteps that are both desired and present in t_labels.
+            t_labels = [int(ts) for ts in desired_timesteps if ts in t_labels]
+            print('Filtered timesteps to load:', t_labels)
+
+        num_timesteps = len(t_labels)
+
+        # When extracting hypercubes, each loaded file returns an array of shape:
         num_points = self.args.num_hypercubes * self.num_pts  # number of hypercubes per file
-        X = np.zeros((num_timesteps, num_points, len(self.args.input_vars) + 2))
-        Y = np.zeros((num_timesteps, num_points, len(self.args.output_vars)))
-        cv_arr = np.zeros((num_timesteps, num_points, len(self.args.cluster_var)))
+        # Adjust the channel dimensions as needed (here we assume extra space for velocity channels)
+        X = np.zeros((num_timesteps, num_points, len(x_labels) + 2))
+        Y = np.zeros((num_timesteps, num_points, len(y_labels)))
+        cv_arr = np.zeros((num_timesteps, num_points, len(cv_labels)))
 
-        for cubeid in range(num_timesteps):
-            print(f'\ncubeid: {cubeid}')
-            X[cubeid], Y[cubeid], cv_arr[cubeid] = self.load_snapshot(cubeid=cubeid)
-            print("X.shape:", X.shape, "Y.shape:", Y.shape, "cv_arr.shape:", cv_arr.shape)
+        for j, ts in enumerate(t_labels[:num_timesteps]):
+            if self.hypercube_handler is not None:
+                # --- Use hypercube extraction ---
+                # Compute hypercube IDs using one of the variables (for example, the first cv variable)
+                hypercubeIDs = self._get_hypercube_IDs(cv_labels[0], ts)
+                print(f"timestep {ts} hypercubeIDs {hypercubeIDs}")
+                for i, var in enumerate(cv_labels):
+                    cv_arr[j, :, i] = self._load_and_process_hypercubes(var, ts, hypercubeIDs)
+
+                dest_col = 0
+                for var in x_labels:
+                    subcube = self._load_and_process_hypercubes(var, ts, hypercubeIDs)
+                    if var == 'velocity':
+                        # If velocity has multiple channels, spread them across consecutive channels.
+                        #subcube = subcube.reshape(-1, 3)
+                        X[j, :, dest_col:dest_col+3] = subcube
+                        dest_col += 3
+                    else:
+                        X[j, :, dest_col] = subcube
+                        dest_col += 1
+
+                for i, var in enumerate(y_labels):
+                    Y[j, :, i] = self._load_and_process_hypercubes(var, ts, hypercubeIDs)
+
+            else:
+                # --- Fallback to full subcube extraction ---
+                for i, var in enumerate(cv_labels):
+                    var_prefix = self.varmap.get(var, var)
+                    cv_arr[j, :, i] = self._read_binary_cube(os.path.join(self.path, var, f"cube_{var_prefix}.{ts}"),
+                                                              has_vector=False)
+                for var in x_labels:
+                    var_prefix = self.varmap.get(var, var)
+                    subcube = self._read_binary_cube(os.path.join(self.path, var, f"cube_{var_prefix}.{ts}"),
+                                                     has_vector=(var == 'velocity'))
+
+                    dest_col = 0
+                    if var == 'velocity':
+                        X[j, :, dest_col:dest_col+3] = subcube
+                        dest_col += 3
+                    else:
+                        X[j, :, dest_col] = subcube
+                        dest_col += 1
+
+                for i, var in enumerate(y_labels):
+                    var_prefix = self.varmap.get(var, var)
+                    Y[j, :, i] = self._read_binary_cube(os.path.join(self.path, var, f"cube_{var_prefix}.{ts}"),
+                                                       has_vector=False)
 
         return X, Y, cv_arr
-
-    def load_snapshot(self, cubeid=0):
-        """
-        Load a static snapshot for the configured input, output, and cluster variables.
-        
-        This function is intended to replace the timestep-based loader for datasets
-        that represent a single static snapshot (like the 8192³ dataset).
-        
-        Parameters:
-          target: Unused placeholder parameter (or could be used to select a specific target variable).
-          cubeid (int): The cube identifier within the file.
-          
-        Returns:
-          X: Data for input variables, shape (num_points, n_input_vars)
-          Y: Data for output variables, shape (num_points, n_output_vars)
-          cv: Data for cluster variable(s), shape (num_points, n_cv_vars)
-        """
-        # List of input, output, and cluster variable names from your args.
-        # Make a copy b/c the variables were getting changed unexpectedly
-        x_labels = [str(x) for x in self.input_vars]
-        y_labels = [str(x) for x in self.output_vars]
-        cv_labels = [str(x) for x in self.cluster_var]
-
-        # Here we assume that each variable's file is found by _get_filenames, and we pick the first file.
-        X_list = []
-        for var in x_labels:
-            files = self._get_filenames(var, cubeid=cubeid)
-            if not files:
-                raise ValueError("No files found for variable: " + var)
-            filename = files[0]
-            # Determine if this variable represents vector data (velocity) or scalars
-            if var == 'velocity':
-                data = self._read_binary_cube(filename, cubeid=cubeid, has_vector=True)
-            else:
-                data = self._read_binary_cube(filename, cubeid=cubeid, has_vector=False)
-            X_list.append(data)
-        # Combine the input data along the last axis.
-        X = np.column_stack(X_list)
-
-        Y_list = []
-        for var in y_labels:
-            files = self._get_filenames(var, cubeid=cubeid)
-            if not files:
-                raise ValueError("No files found for variable: " + var)
-            filename = files[0]
-            data = self._read_binary_cube(filename, cubeid=cubeid, has_vector=False)
-            Y_list.append(data)
-        Y = np.column_stack(Y_list)
-
-        cv_list = []
-        for var in cv_labels:
-            files = self._get_filenames(var, cubeid=cubeid)
-            if not files:
-                raise ValueError("No files found for variable: " + var)
-            filename = files[0]
-            data = self._read_binary_cube(filename, cubeid=cubeid, has_vector=False)
-            cv_list.append(data)
-        cv = np.column_stack(cv_list)
-
-        return X, Y, cv
-
-    def compute_subcube_origin(self, filename, cubeid):
-        """
-        Compute the starting indices (x0, y0, z0) of the subcube to extract.
-        
-        If the file is already located in a cube folder (e.g. "/.../8192/1/"),
-        then we assume the data is local to that cube and set x0 to 0.
-        Otherwise, we compute x0 = cubeid * N_cube.
-        """
-        # Extract the fileid from the filename.
-        base = os.path.basename(filename)  # e.g., "cube_enst.40"
-        try:
-            fileid = int(base.split('.')[-1])
-        except Exception as e:
-            raise ValueError("Failed to extract fileid from filename: " + filename) from e
-
-        num_cubes = 8
-        N_cube = self.grid_size[0] // num_cubes  # e.g., 2048//8 = 256
-        # Compute Y and Z block indices using fileid.
-        j = (fileid // 8) % num_cubes
-        k = fileid % num_cubes
-
-        # Check if the file is in a directory that is just a cube ID.
-        parent = os.path.basename(os.path.dirname(filename))
-        if parent.isdigit():
-            # The file is already in a cube folder. Do not add an extra X offset.
-            x0 = 0
-        else:
-            # Otherwise, shift in X by the cubeid.
-            x0 = cubeid * N_cube
-
-        y0 = j * N_cube
-        z0 = k * N_cube
-
-        # Optionally add any base offset.
-        if hasattr(self, 'subcube_origin'):
-            base_origin = self.subcube_origin
-            x0 += base_origin[0]
-            y0 += base_origin[1]
-            z0 += base_origin[2]
-
-        return int(x0), int(y0), int(z0)
-
 
 
 # For backward compatibility.
