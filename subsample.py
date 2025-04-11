@@ -111,13 +111,16 @@ if __name__ == "__main__":
         subsampler = get_subsampler(X, args)
 
     # Perform subsampling
-    em = EnergyMonitor(get_calling_filename())
-    em.start()
+    if os.path.exists("/sys/cray/pm_counters"):
+        em = EnergyMonitor(get_calling_filename())
+        em.start()
 
     Xout, Yout, indices_list = subsample_data(X, Y, x, y, z, subsampler, args)
 
-    em.end()
-    em.aggregate()
+    if os.path.exists("/sys/cray/pm_counters"):
+        em.end()
+        em.aggregate()
+
     print(f"Xout: {Xout.shape}; Yout: {Yout.shape}")
 
     # Save to VTK unstructured format
