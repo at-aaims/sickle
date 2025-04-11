@@ -245,6 +245,22 @@ def broadcast_large_array(data, comm, root=0):
 
     return data
 
+def print_sparsity(data, tolerance=1e-6):
+    """
+    Prints the sparsity of the data as the percentage of elements that are zero
+    (or within a specified tolerance of zero).
+
+    Parameters:
+        data (np.ndarray): The input array.
+        tolerance (float): Values with absolute value below this threshold
+                           are considered zero. Default is 1e-6.
+    """
+    total_elements = data.size
+    non_zero_elements = np.count_nonzero(np.abs(data) > tolerance)
+    zero_elements = total_elements - non_zero_elements
+    sparsity = zero_elements / total_elements
+    print(f"Sparsity: {sparsity:.2%}")
+
 
 if __name__ == "__main__":
     # Example usage:
