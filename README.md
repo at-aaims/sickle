@@ -128,6 +128,12 @@ Detailed examples (including commands for testing on laptops, Frontier, parallel
 
 ## SLURM Scripts
 
+SLURM Scripts and YAML config files are in sickle-contrib repo. Run:
+
+```
+git submodule update --init --recursive
+```
+
 For users running on clusters with SLURM, sample scripts are available in the `scripts` directory. These scripts are set up to perform both a subsampling and a training event in a single SLURM session. **Before using them, make sure to modify the scripts to specify your account information.** For example, you can submit a job with:
 
 ```bash
