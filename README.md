@@ -137,7 +137,7 @@ git submodule update --init --recursive
 For users running on clusters with SLURM, sample scripts are available in the `scripts` directory. These scripts are set up to perform both a subsampling and a training event in a single SLURM session. **Before using them, make sure to modify the scripts to specify your account information.** For example, you can submit a job with:
 
 ```bash
-sbatch scripts/slurm.sh
+sbatch contrib/slurm-scripts/slurm.sh
 ```
 
 ## License
