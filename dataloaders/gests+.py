@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import glob
-import time
 
 from dataloaders import DataLoader
 from helpers import check_data

@@ -47,10 +47,6 @@ def load_data(args, **kwargs):
         args.write_interval, args.num_timesteps, target=args.target, cv=args.cluster_var
     )
 
-    #for cubeid in range(1):
-    #    print(f'cubeid: {cubeid}')
-    #    X, Y, cv = dl.load_snapshot(cubeid=cubeid)
-
     return X, Y, cv, x, y, z
 
 # -------------------------------------------------------------------
