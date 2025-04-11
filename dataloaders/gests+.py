@@ -12,6 +12,7 @@ try:
 except ImportError:
     HypercubeHandler = None
 
+num_cubes = 8
 
 class GESTSDataLoader(DataLoader):
 
@@ -78,8 +79,8 @@ class GESTSDataLoader(DataLoader):
         base_shape = self.grid_size  # e.g., (8192, 8192, 8192) for the entire dataset.
 
         # For 8192³, assume 8 cubes along X.
-        num_cubes_in_file = 8 if base_shape[0] > self.subcube_size[0] else 1
-        cube_x_size = base_shape[0] // num_cubes_in_file
+        #num_cubes_in_file = 8 if base_shape[0] > self.subcube_size[0] else 1
+        cube_x_size = base_shape[0] // num_cubes
         cube_shape = (cube_x_size, base_shape[1], base_shape[2])
         #print(f"For cubeid {cubeid}: grid_size={self.grid_size}, cube_x_size={cube_x_size}")
 
@@ -182,7 +183,8 @@ class GESTSDataLoader(DataLoader):
         print("x_labels:", self.input_vars)
         print("y_labels:", self.output_vars)
         print("cv_labels:", self.cluster_var)
-        num_points = self.args.num_hypercubes * self.num_pts  # number of hypercubes per file
+
+        num_points = self.num_pts * num_cubes
         X = np.zeros((num_timesteps, num_points, len(self.args.input_vars) + 2))
         Y = np.zeros((num_timesteps, num_points, len(self.args.output_vars)))
         cv_arr = np.zeros((num_timesteps, num_points, len(self.args.cluster_var)))
@@ -222,14 +224,19 @@ class GESTSDataLoader(DataLoader):
             files = self._get_filenames(var, cubeid=cubeid)
             if not files:
                 raise ValueError("No files found for variable: " + var)
-            filename = files[0]
-            # Determine if this variable represents vector data (velocity) or scalars
-            if var == 'velocity':
-                data = self._read_binary_cube(filename, cubeid=cubeid, has_vector=True)
-            else:
-                data = self._read_binary_cube(filename, cubeid=cubeid, has_vector=False)
-            X_list.append(data)
-        # Combine the input data along the last axis.
+            var_data_list = []
+            for f in files:
+                print(f)
+                # Determine if this variable represents vector data (velocity) or scalars
+                if var == 'velocity':
+                    data = self._read_binary_cube(f, cubeid=cubeid, has_vector=True)
+                else:
+                    data = self._read_binary_cube(f, cubeid=cubeid, has_vector=False)
+                var_data_list.append(data)
+            # Concatenate the data from all files along the sample axis.
+            aggregated = np.concatenate(var_data_list, axis=0)
+            X_list.append(aggregated)
+        # Combine the variables as columns
         X = np.column_stack(X_list)
 
         Y_list = []
@@ -237,9 +244,13 @@ class GESTSDataLoader(DataLoader):
             files = self._get_filenames(var, cubeid=cubeid)
             if not files:
                 raise ValueError("No files found for variable: " + var)
-            filename = files[0]
-            data = self._read_binary_cube(filename, cubeid=cubeid, has_vector=False)
-            Y_list.append(data)
+            var_data_list = []
+            for f in files:
+                print(f)
+                data = self._read_binary_cube(f, cubeid=cubeid, has_vector=False)
+                var_data_list.append(data)
+            aggregated = np.concatenate(var_data_list, axis=0)
+            Y_list.append(aggregated)
         Y = np.column_stack(Y_list)
 
         cv_list = []
@@ -247,9 +258,13 @@ class GESTSDataLoader(DataLoader):
             files = self._get_filenames(var, cubeid=cubeid)
             if not files:
                 raise ValueError("No files found for variable: " + var)
-            filename = files[0]
-            data = self._read_binary_cube(filename, cubeid=cubeid, has_vector=False)
-            cv_list.append(data)
+            var_data_list = []
+            for f in files:
+                print(f)
+                data = self._read_binary_cube(f, cubeid=cubeid, has_vector=False)
+                var_data_list.append(data)
+            aggregated = np.concatenate(var_data_list, axis=0)
+            cv_list.append(aggregated)
         cv = np.column_stack(cv_list)
 
         return X, Y, cv
@@ -269,10 +284,9 @@ class GESTSDataLoader(DataLoader):
         except Exception as e:
             raise ValueError("Failed to extract fileid from filename: " + filename) from e
 
-        num_cubes = 8
         N_cube = self.grid_size[0] // num_cubes  # e.g., 2048//8 = 256
         # Compute Y and Z block indices using fileid.
-        j = (fileid // 8) % num_cubes
+        j = (fileid // num_cubes) % num_cubes
         k = fileid % num_cubes
 
         # Check if the file is in a directory that is just a cube ID.
