@@ -48,7 +48,6 @@ class GESTSDataLoader(DataLoader):
             self.hypercube_handler = None
 
     def _get_filenames(self, variable, cubeid=0, verbose=True):
-        print("***", variable)
         var_prefix = self.varmap.get(variable, variable)
         # For the 8192 dataset, use the cubeid folder
         var_path = os.path.join(self.path, str(cubeid))
@@ -83,7 +82,7 @@ class GESTSDataLoader(DataLoader):
         num_cubes_in_file = 8 if base_shape[0] > self.subcube_size[0] else 1
         cube_x_size = base_shape[0] // num_cubes_in_file
         cube_shape = (cube_x_size, base_shape[1], base_shape[2])
-        print(f"For cubeid {cubeid}: grid_size={self.grid_size}, cube_x_size={cube_x_size}")
+        #print(f"For cubeid {cubeid}: grid_size={self.grid_size}, cube_x_size={cube_x_size}")
 
         itemsize = np.dtype(dtype).itemsize
         bytes_per_cube = np.prod(cube_shape) * itemsize
@@ -114,7 +113,6 @@ class GESTSDataLoader(DataLoader):
                 data[comp, :, :, :] = np.transpose(data[comp, :, :, :], (0, 2, 1))
         else:
             data = np.transpose(data, (0, 2, 1))  # Now (X, Y, Z)
-        print(f"Data shape before slicing: {data.shape}")
                 
         # Compute the subcube origin based on fileid and cubeid.
         # For example, call a helper function to convert these indices to an origin.
@@ -122,7 +120,7 @@ class GESTSDataLoader(DataLoader):
         x1 = x0 + self.subcube_size[0]
         y1 = y0 + self.subcube_size[1]
         z1 = z0 + self.subcube_size[2]
-        print(f"Computed x0={x0}, x1={x1}")
+        #print(f"Computed x0={x0}, x1={x1}")
 
         if self.verbose:
             print(f"Extracting subcube indices: x:{x0}-{x1}, y:{y0}-{y1}, z:{z0}-{z1}")
@@ -140,17 +138,6 @@ class GESTSDataLoader(DataLoader):
             print(f"Final subcube shape: {subcube.shape}")
         
         return subcube
-
-    # --- New helper methods for hypercube extraction ---
-    #def _get_hypercube_IDs(self, variable, ts):
-    #    """
-    #    Compute hypercube IDs for a given variable at timestep ts.
-    #    We use one variable’s file as the basis.
-    #    """
-    #    var_prefix = self.varmap.get(variable, variable)
-    #    file_path = os.path.join(self.path, variable, f"cube_{var_prefix}.{ts}")
-    #    # We pass a list containing this file path to the hypercube handler.
-    #    return self.hypercube_handler.extract_ids([file_path])
 
     def _get_hypercube_IDs(self, variable, ts):
         """
@@ -196,18 +183,20 @@ class GESTSDataLoader(DataLoader):
     def load_multiple_timesteps(self, write_interval, num_timesteps, target, cv, file_filter='*_*'):
 
         print("num timesteps", num_timesteps)
-        print("x_labels:", self.args.input_vars)
+        print("x_labels:", self.input_vars)
+        print("y_labels:", self.output_vars)
+        print("cv_labels:", self.cluster_var)
         num_points = self.args.num_hypercubes * self.num_pts  # number of hypercubes per file
         X = np.zeros((num_timesteps, num_points, len(self.args.input_vars) + 2))
         Y = np.zeros((num_timesteps, num_points, len(self.args.output_vars)))
         cv_arr = np.zeros((num_timesteps, num_points, len(self.args.cluster_var)))
 
         for cubeid in range(num_timesteps):
-            print(f'cubeid: {cubeid}')
-            X[cubeid], Y[cubeid], cv[cubeid] = self.load_snapshot(cubeid=cubeid)
+            print(f'\ncubeid: {cubeid}')
+            X[cubeid], Y[cubeid], cv_arr[cubeid] = self.load_snapshot(cubeid=cubeid)
             print("X.shape:", X.shape, "Y.shape:", Y.shape, "cv_arr.shape:", cv_arr.shape)
 
-        return X, Y, cv
+        return X, Y, cv_arr
 
     def load_snapshot(self, cubeid=0):
         """
@@ -226,20 +215,15 @@ class GESTSDataLoader(DataLoader):
           cv: Data for cluster variable(s), shape (num_points, n_cv_vars)
         """
         # List of input, output, and cluster variable names from your args.
-        #x_labels = self.args.input_vars.copy()           # e.g., ['velocity', 'enstrophy']
-        #y_labels = self.args.output_vars.copy()          # e.g., ['pressure']
-        #cv_labels = self.args.cluster_var.copy()  # e.g., ['dissipation']
-
+        # Make a copy b/c the variables were getting changed unexpectedly
         x_labels = [str(x) for x in self.input_vars]
         y_labels = [str(x) for x in self.output_vars]
         cv_labels = [str(x) for x in self.cluster_var]
-        print("======", cv_labels)
 
         # Here we assume that each variable's file is found by _get_filenames, and we pick the first file.
         X_list = []
         for var in x_labels:
             files = self._get_filenames(var, cubeid=cubeid)
-            print("*** files", files)
             if not files:
                 raise ValueError("No files found for variable: " + var)
             filename = files[0]
@@ -264,7 +248,6 @@ class GESTSDataLoader(DataLoader):
 
         cv_list = []
         for var in cv_labels:
-            print("****** var", var)
             files = self._get_filenames(var, cubeid=cubeid)
             if not files:
                 raise ValueError("No files found for variable: " + var)
@@ -273,58 +256,42 @@ class GESTSDataLoader(DataLoader):
             cv_list.append(data)
         cv = np.column_stack(cv_list)
 
-        # Add an extra dimension to simulate a single timestep.
-        #X = np.expand_dims(X, axis=0)
-        #Y = np.expand_dims(Y, axis=0)
-        #cv = np.expand_dims(cv, axis=0)
-        print("lakjsdaflkjasdfklj", X.shape, Y.shape, cv.shape)
-
         return X, Y, cv
 
     def compute_subcube_origin(self, filename, cubeid):
         """
-        Compute the starting indices (x0, y0, z0) of the subcube to extract
-        based on both the fileid (extracted from the filename) and the cubeid.
+        Compute the starting indices (x0, y0, z0) of the subcube to extract.
         
-        Assumptions:
-          - Filename is of the form "cube_<var>.<fileid>" (e.g., "cube_diss.40").
-          - The global grid (self.grid_size) is a cube, e.g., (8192, 8192, 8192).
-          - For the 8192³ dataset, the grid is partitioned into 8 blocks along each dimension.
-          - The fileid determines the Y and Z offsets:
-                j = (fileid // 8) % 8   --> y-direction block index
-                k = fileid % 8          --> z-direction block index
-          - The cubeid (an integer from 0 to 7) determines the X offset.
-          - If self.subcube_origin exists, its tuple is added as a base offset.
-        
-        Returns:
-          A tuple (x0, y0, z0) representing the global starting index for the subcube.
+        If the file is already located in a cube folder (e.g. "/.../8192/1/"),
+        then we assume the data is local to that cube and set x0 to 0.
+        Otherwise, we compute x0 = cubeid * N_cube.
         """
         # Extract the fileid from the filename.
-        base = os.path.basename(filename)  # e.g., "cube_diss.40"
+        base = os.path.basename(filename)  # e.g., "cube_enst.40"
         try:
             fileid = int(base.split('.')[-1])
         except Exception as e:
             raise ValueError("Failed to extract fileid from filename: " + filename) from e
 
-        # For the 8192³ dataset, assume we partition each dimension into 8 segments.
         num_cubes = 8
-        # Assume self.grid_size is defined, e.g., (8192, 8192, 8192).
-        # Compute the block size along each dimension.
-        N_cube = self.grid_size[0] // num_cubes  # (Assumes cubic domain)
-
-        # Fileid is used to determine the Y and Z block indices.
-        # Example: if fileid=40 then:
-        #   j = (40 // 8) % 8 = 5   --> block index along Y.
-        #   k = 40 % 8 = 0          --> block index along Z.
+        N_cube = self.grid_size[0] // num_cubes  # e.g., 2048//8 = 256
+        # Compute Y and Z block indices using fileid.
         j = (fileid // 8) % num_cubes
         k = fileid % num_cubes
 
-        # The cubeid (0-7) selects which block along X within the file.
-        x0 = cubeid * N_cube
+        # Check if the file is in a directory that is just a cube ID.
+        parent = os.path.basename(os.path.dirname(filename))
+        if parent.isdigit():
+            # The file is already in a cube folder. Do not add an extra X offset.
+            x0 = 0
+        else:
+            # Otherwise, shift in X by the cubeid.
+            x0 = cubeid * N_cube
+
         y0 = j * N_cube
         z0 = k * N_cube
 
-        # Optionally, include any additional offset defined by self.subcube_origin.
+        # Optionally add any base offset.
         if hasattr(self, 'subcube_origin'):
             base_origin = self.subcube_origin
             x0 += base_origin[0]
@@ -332,6 +299,7 @@ class GESTSDataLoader(DataLoader):
             z0 += base_origin[2]
 
         return int(x0), int(y0), int(z0)
+
 
 
 # For backward compatibility.
