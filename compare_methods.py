@@ -6,18 +6,35 @@ from args import args
 from subsampling import get_subsampler
 from dataloaders import load_data
 from scipy.stats import gaussian_kde
+from hypercubes import get_hypercube_extractor
 
 
 if __name__ == "__main__":
 
+    # Define hypercube extraction function
+    extractor = get_hypercube_extractor(args.hypercubes, use_parallel=True)
+
     # Load the data
     print("loading data")
-    X, Y, cv, x, y, z = load_data(args)
+    X, Y, cv, x, y, z = load_data(args, extractor=extractor)
     print("done loading")
     num_timesteps = X.shape[0] // args.window * args.window + 1
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
 
-    ts = 0
+    # OF2D
+    # python compare_methods.py contrib/configs/OF/default.yaml 
+    ts = 97
+    ymax = 1000
+
+    # SST-P1 - make sure cluster_var set to just 'pv'
+    # python compare_methods.py contrib/configs/SST/P1/Hrandom-Xmaxent-1.yaml --timesteps 17.2
+    #ts = 0
+    #ymax = 10
+
+    # GESTS-2048
+    # python compare_methods.py contrib/configs/GESTS/2048/Hmaxent-Xmaxent.yaml --timesteps 1
+    #ts = 0
+    #ymax = 100
 
     histograms = {}  # Store histogram data for plotting
     for method in ["full", "random", "uips", "maxent"]:
@@ -58,7 +75,8 @@ if __name__ == "__main__":
         kde = gaussian_kde(subsampled_cv.T)
         kde_values = kde(bins)
         #kde_values_normalized = kde_values / np.max(kde_values)
-        plt.plot(bins, kde_values, label=method, color=color)
+        #plt.plot(bins, kde_values, label=method, color=color)
+        plt.plot(bins, kde_values, color=color)
 
         values, bin_edges = np.histogram(subsampled_cv, bins=bins, density=True)
         area = np.sum(values * np.diff(bin_edges))
@@ -69,10 +87,10 @@ if __name__ == "__main__":
     xlabel = {'p': 'Pressure', 'pv': 'Potential Vorticity', 'enstrophy': 'Enstrophy', 'wz': 'Vorticy ($\omega_z$)'}
 
     # Set plot title and labels
-    plt.title(args.dtype, fontsize=fs)
+    #plt.title(args.dtype, fontsize=fs)
     plt.xlabel(xlabel[args.cluster_var[0]], fontsize=fs)
     plt.ylabel("Probability Density", fontsize=fs)
-    #plt.yscale('log')
+    plt.yscale('log')
 
     # Set tick label size
     plt.tick_params(axis='both', labelsize=fs)
@@ -86,6 +104,7 @@ if __name__ == "__main__":
 
     # Set x-axis limits
     plt.xlim(xmin, xmax)
+    plt.ylim(top=ymax)
 
     # Save and show the plot
     plt.tight_layout()
