@@ -1,11 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
 
 class LSTMModel(nn.Module):
-    def __init__(self, input_shape, output_shape='None', units=288, activation='elu', dropout=0.5, window=3):
+    def __init__(self, input_shape, units=288, activation='elu', dropout=0.5, window=3):
         super(LSTMModel, self).__init__()
-        self.lstm1 = nn.LSTM(input_shape[-1], units, batch_first=True)
+        #self.lstm1 = nn.LSTM(input_shape[-1], units, batch_first=True)
+        #self.lstm1 = nn.LSTM(np.prod(input_shape[1:]), units, batch_first=True)
+        self.lstm1 = nn.LSTM(int(torch.prod(torch.tensor(input_shape[1:]))), units, batch_first=True)
         self.lstm2 = nn.LSTM(units, units, batch_first=True)
         self.dropout = nn.Dropout(dropout)
         self.flatten = nn.Flatten()
@@ -23,6 +26,7 @@ class LSTMModel(nn.Module):
             raise ValueError("Unsupported activation function")
 
     def forward(self, x):
+        x = x.view(x.size(0), x.size(1), -1)  # (B, window, features)
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
         x = self.dropout(x)
@@ -32,9 +36,8 @@ class LSTMModel(nn.Module):
         x = self.fc3(x)
         return x
 
-def build_model(input_shape, units=288, activation='elu', dropout=0.5, lr=0.0003, window=3):
-    model = LSTMModel(input_shape, units, activation, dropout, window)
-    return model
+def build_model(input_shape, output_shape, units=288, activation='elu', dropout=0.5, lr=0.0003, window=3):
+    return LSTMModel(input_shape, units, activation, dropout, window)
 
 def get_meta_model(input_shape):
     def meta_model(hp):

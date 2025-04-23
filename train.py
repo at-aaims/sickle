@@ -107,7 +107,7 @@ class Trainer:
         input_shape = X_train.shape[1:]
         output_shape = Y_train.shape[1:] if len(Y_train.shape) > 1 else 1
         model_module = importlib.import_module('archs.' + args.arch)
-        model = model_module.build_model(input_shape, output_shape, window=args.window).to(self.device)
+        model = model_module.build_model(input_shape, output_shape=output_shape, window=args.window).to(self.device)
 
         print(f"Trainer: Rank {self.rank}: Model moved to {self.device}")
         # device_ids must be None for CPUs.
