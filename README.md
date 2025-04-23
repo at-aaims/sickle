@@ -36,7 +36,7 @@ SICKLE helps "separate the wheat from the chaff" by using various subsampling me
 3. **Frontier Environment Setup:**  
    On Frontier, a simple environment setup is provided. Instead of running the above two steps separately, simply execute:
    ```bash
-   . environment
+   . contrib/env-frontier
    ```
    This single command sets up both the virtual environment and loads the required modules.
 
