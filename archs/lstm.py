@@ -3,19 +3,29 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 
+
 class LSTMModel(nn.Module):
-    def __init__(self, input_shape, units=288, activation='elu', dropout=0.5, window=3):
+    def __init__(self, input_shape, output_shape, units=288, activation='elu', dropout=0.5, window=3):
         super(LSTMModel, self).__init__()
-        #self.lstm1 = nn.LSTM(input_shape[-1], units, batch_first=True)
-        #self.lstm1 = nn.LSTM(np.prod(input_shape[1:]), units, batch_first=True)
-        self.lstm1 = nn.LSTM(int(torch.prod(torch.tensor(input_shape[1:]))), units, batch_first=True)
+
+        self.input_size = int(torch.prod(torch.tensor(input_shape[1:])))
+        self.output_shape = output_shape  # e.g., (1, 540)
+        #self.output_dim = int(torch.prod(torch.tensor(output_shape)))  # = 1 * 540 = 540
+
+        # drop the time‐window dim first, then compute output_dim = 1*540 = 540
+        per_timestep_shape = output_shape[1:] if output_shape[0] == window else output_shape
+        self.output_dim = 1
+        for dim in per_timestep_shape:
+            self.output_dim *= dim
+
+        self.lstm1 = nn.LSTM(self.input_size, units, batch_first=True)
         self.lstm2 = nn.LSTM(units, units, batch_first=True)
         self.dropout = nn.Dropout(dropout)
-        self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(units * input_shape[0], units)
+
+        self.fc1 = nn.Linear(units, units)
         self.fc2 = nn.Linear(units, units // 2)
-        self.fc3 = nn.Linear(units // 2, window)
-        
+        self.fc3 = nn.Linear(units // 2, self.output_dim)
+
         if activation == 'elu':
             self.activation = nn.ELU()
         elif activation == 'gelu':
@@ -26,18 +36,30 @@ class LSTMModel(nn.Module):
             raise ValueError("Unsupported activation function")
 
     def forward(self, x):
-        x = x.view(x.size(0), x.size(1), -1)  # (B, window, features)
+        # x: [B, T, C, D] — flatten to [B, T, features]
+        x = x.view(x.size(0), x.size(1), -1)
+
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
         x = self.dropout(x)
-        x = self.flatten(x)
+
+        # Apply FC layers to each timestep: [B, T, units] → [B, T, output_dim]
         x = self.activation(self.fc1(x))
         x = self.activation(self.fc2(x))
         x = self.fc3(x)
-        return x
+
+        # Reshape to [B, T, 1, 540]
+        return x.view(x.size(0), x.size(1), 1, -1)
+
 
 def build_model(input_shape, output_shape, units=288, activation='elu', dropout=0.5, lr=0.0003, window=3):
-    return LSTMModel(input_shape, units, activation, dropout, window)
+    return LSTMModel(input_shape=input_shape,
+                     output_shape=output_shape,
+                     units=units,
+                     activation=activation,
+                     dropout=dropout,
+                     window=window)
+
 
 def get_meta_model(input_shape):
     def meta_model(hp):
