@@ -1,5 +1,10 @@
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+
 import numpy as np
 import os
+import sys
 
 from args import args 
 from constants import FieldPredictionType
@@ -98,6 +103,13 @@ if __name__ == "__main__":
     X, Y, cv, x, y, z = load_data(args, extractor=extractor)
     num_timesteps = X.shape[0]
     print(f"X: {X.shape}; Y: {Y.shape}; cv: {cv.shape}; x: {x.shape}; y: {y.shape}; z: {z.shape}; num_timesteps: {num_timesteps}")
+
+    # ── strictly wait for all ranks to finish hypercube extraction ──
+    comm.Barrier()
+
+    # only rank 0 should go on to do the subsampling & I/O
+    if rank != 0:
+        sys.exit(0)
 
     # Check that sampling will work with current settings
     time_range = range(0, num_timesteps - args.window + 1, args.window)
