@@ -11,6 +11,7 @@
 - [Examples](#examples)
 - [Advanced Topics](#advanced-topics)
 - [SLURM Scripts](#slurm-scripts)
+- [Citation](#citation)
 - [License](#license)
 - [Additional Resources](#additional-resources)
 
@@ -138,6 +139,20 @@ For users running on clusters with SLURM, sample scripts are available in the `s
 
 ```bash
 sbatch contrib/slurm-scripts/slurm.sh
+```
+
+## Citation
+
+If you use SICKLE in your research, please cite our work:
+
+```
+@inproceedings{brewer2025intelligent,
+  title={Intelligent Sampling of Extreme-Scale Turbulence Datasets for Accurate and Efficient Spatiotemporal Model Training},
+  author={Brewer, Wesley and Meena Gopalakrishnan, Murali and Maiterth, Matthias and Kashi, Aditya and Choi, Jong Youl and Zhang, Pei and Nichols, Stephen and Balin, Riccardo and Couchman, Miles and de Bruyn Kops, Stephen and others},
+  booktitle={Proceedings of the SC'25 Workshops of the International Conference for High Performance Computing, Networking, Storage and Analysis},
+  pages={1--10},
+  year={2025}
+}
 ```
 
 ## License
