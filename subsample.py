@@ -129,6 +129,16 @@ if __name__ == "__main__":
 
     Xout, Yout, indices_list = subsample_data(X, Y, x, y, z, subsampler, args)
 
+    # Save maxent indices per timestep so downstream tools (e.g. galgal bridge)
+    # can reproduce the exact sample locations without re-running sickle.
+    if args.timesteps is not None:
+        ts_sorted = sorted(args.timesteps)
+        for i, idxs in enumerate(indices_list):
+            ts = ts_sorted[i * args.window]
+            outpath = os.path.join(args.output_dir, f"indices_{ts:.6f}.npy")
+            np.save(outpath, idxs)
+        print(f"Saved {len(indices_list)} indices file(s) to {args.output_dir}")
+
     if os.path.exists("/sys/cray/pm_counters"):
         em.end()
         em.aggregate()
