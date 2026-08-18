@@ -72,11 +72,15 @@ class Trainer:
         self.world_size = int(os.environ['SLURM_NTASKS']) if "SLURM_NTASKS" in os.environ else 1
         if self.world_size == 1:
             print("Trainer: running on one process")
-        if 'MASTER_ADDR' in os.environ:
-            if self.rank == 0:
-                print("Trainer: master address is " + os.environ["MASTER_ADDR"])
-        else:
-            raise "Need the environment variable MASTER_ADDR to be set to the IP address of the master process!"
+            # Single-process runs (i.e. not launched under Slurm) have no
+            # master node to discover, so default to localhost instead of
+            # requiring the caller to export these for every local run.
+            os.environ.setdefault('MASTER_ADDR', '127.0.0.1')
+            os.environ.setdefault('MASTER_PORT', '29500')
+        elif 'MASTER_ADDR' not in os.environ:
+            raise RuntimeError("Need the environment variable MASTER_ADDR to be set to the IP address of the master process!")
+        if self.rank == 0:
+            print("Trainer: master address is " + os.environ["MASTER_ADDR"])
         self.master_addr = os.environ['MASTER_ADDR']  # Address of the master node
         #self.master_port = os.environ['MASTER_PORT']  # Port of the master node
 
@@ -84,8 +88,11 @@ class Trainer:
         if torch.cuda.is_available():
             if self.rank == 0:
                 print('Trainer: We have a GPU!')
+            # NCCL requires NVML; fall back to gloo for single-process runs
+            # where there's no cross-GPU communication to actually do.
+            backend = "nccl" if self.world_size > 1 else "gloo"
             # Initialize the process group
-            dist.init_process_group("nccl", rank=self.rank, world_size=self.world_size)
+            dist.init_process_group(backend, rank=self.rank, world_size=self.world_size)
             torch.cuda.set_device(self.rank % torch.cuda.device_count())  # Assign GPU based on rank
             self.device = torch.device(f'cuda:{self.rank % torch.cuda.device_count()}')
             # Verify GPU setup
@@ -143,7 +150,7 @@ class Trainer:
 
         # Create a scheduler that monitors the validation loss
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='min', factor=0.5, patience=args.patience, verbose=True, threshold=1e-4
+            optimizer, mode='min', factor=0.5, patience=args.patience, threshold=1e-4
         )
 
         criterion = nn.MSELoss()
