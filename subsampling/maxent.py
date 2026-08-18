@@ -40,8 +40,10 @@ class MaxentSubsampler(Subsampler):
         for i in range(num_clusters):
             probs[labels == i] = in_strengths[i]
         
-        # Normalize probabilities.
-        probs = (probs - np.min(probs)) / (np.max(probs) - np.min(probs))
+        # Normalize into a probability distribution. in_strengths (KL-divergence
+        # based) are already non-negative, so summing suffices; min-max scaling
+        # here would floor the lowest in-strength cluster to exactly zero
+        # probability, permanently excluding it from ever being sampled.
         probs /= np.sum(probs)
         
         # Randomly sample indices based on the computed probabilities.
