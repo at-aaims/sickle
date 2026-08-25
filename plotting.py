@@ -47,6 +47,35 @@ def plot_samples(indices, labels, x, y, z, ts):
     plt.close()
 
 
+def plot_points_3d(x_points, y_points, z_points, labels, plot_dir, filename, title=None, cmap='tab10'):
+    """
+    Scatter an already-flattened 3D point cloud, colored by `labels`.
+
+    Unlike plot_kmeans_3d/plot_samples (which rebuild a regular meshgrid from
+    1D axis arrays and therefore assume all points come from one contiguous
+    hypercube), this takes literal per-point coordinates, so it works just as
+    well when the points are drawn from several disjoint hypercubes scattered
+    around the full domain.
+    """
+    plt.clf()
+    plt.rcParams.update({'font.size': 10})
+    ax = plt.subplot(111, projection='3d')
+    ax.view_init(elev=elev, azim=azim)
+    ax.scatter(x_points, y_points, z_points, c=labels, s=5, alpha=0.6, cmap=cmap)
+
+    if title:
+        ax.set_title(title)
+
+    if not show_ticks:
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_zticks([])
+
+    print(f'Creating {filename}')
+    plt.savefig(os.path.join(plot_dir, filename), dpi=100, bbox_inches='tight')
+    plt.close()
+
+
 def plot2d_contour(data, y, z, timestep):
     """Plots a 2D plane from 1D data, y, and z coordinates."""
     data_2d = data.reshape(len(y), len(z))
@@ -289,7 +318,7 @@ def plot_ML_outputs(Y_test_ML, Y_test):
     plt.savefig(os.path.join(args.plot_dir, fn), dpi=100)
     plt.close()
 
-def plot_contour_box_3d(x, y, z, data, timestep):
+def plot_contour_box_3d(x, y, z, data, timestep, suffix=''):
     # Create a new figure and 3D axis
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, projection='3d')
@@ -337,7 +366,7 @@ def plot_contour_box_3d(x, y, z, data, timestep):
         ax._axis3don = False
 
     # Save plot
-    fn = f'contour_{timestep:04d}.png'
+    fn = f'contour_{timestep:04d}{suffix}.png'
     print(f'Creating {fn}', flush=True)
     plt.savefig(os.path.join(args.plot_dir, fn), dpi=100)
     plt.close(fig)

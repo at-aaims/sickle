@@ -116,7 +116,7 @@ train:
 
 ## Examples
 
-Detailed examples (including commands for testing on laptops, Frontier, parallel runs, and flow over cylinder cases) are provided in a separate file: [EXAMPLES.md](./EXAMPLES.md).
+Detailed examples (including commands for testing on laptops, Frontier, parallel runs, visualizing subsampled hypercubes/points, and flow over cylinder cases) are provided in a separate file: [EXAMPLES.md](./EXAMPLES.md).
 
 ## Advanced Topics
 

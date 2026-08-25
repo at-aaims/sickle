@@ -5,7 +5,8 @@ import scipy.stats
 import pandas as pd
 from .base import Subsampler
 from plotting import plot_adjacency_matrix, plot_kmeans_3d, plot_prob_dists, \
-                     plot_cluster_histogram, plot_contour_box_3d, plot_samples
+                     plot_cluster_histogram, plot_contour_box_3d, plot_samples, \
+                     plot_points_3d
 
 class MaxentSubsampler(Subsampler):
     def __init__(self, data, args, **kwargs):
@@ -87,6 +88,28 @@ class MaxentSubsampler(Subsampler):
             plot_adjacency_matrix(adj_matrix, n_clusters, timestep)
         return in_strengths
 
+    def _global_point_coords(self, hypercube_ids):
+        """
+        Reconstruct grid-index (x, y, z) coordinates for every point in the
+        concatenated multi-hypercube data array, in the same
+        hypercube-major / row-major-local order used when the dataloader
+        built X/Y/cv (see hypercubes/hypercube_manager.py:load_hypercubes).
+
+        hypercube_ids: (num_hypercubes, 3) array of (ix, iy, iz) block
+        coordinates -- hypercube h's corner sits at
+        (ix*nxsl, iy*nysl, iz*nzsl) in full-grid index space.
+        """
+        nxsl, nysl, nzsl = self.args.nxsl, self.args.nysl, self.args.nzsl
+        lx, ly, lz = np.meshgrid(np.arange(nxsl), np.arange(nysl), np.arange(nzsl), indexing='ij')
+        lx, ly, lz = lx.ravel(), ly.ravel(), lz.ravel()
+
+        gx, gy, gz = [], [], []
+        for (ix, iy, iz) in hypercube_ids:
+            gx.append(ix * nxsl + lx)
+            gy.append(iy * nysl + ly)
+            gz.append(iz * nzsl + lz)
+        return np.concatenate(gx), np.concatenate(gy), np.concatenate(gz)
+
     def generate_plots(self, data, labels, clusters, maxent_indices, timestep, num_samples):
         """
         Generate plots for KMeans clustering, cluster histogram, and
@@ -101,18 +124,55 @@ class MaxentSubsampler(Subsampler):
           timestep       : Current timestep (for filenames).
           num_samples    : Number of samples requested.
         """
-        x, y, z = self.coords
+        # self.coords is the local (nxsl, nysl, nzsl) axis grid of a single
+        # hypercube; labels/maxent_indices span ALL num_hypercubes cubes
+        # concatenated together, so plot_kmeans_3d/plot_samples (which
+        # rebuild a meshgrid from those axes) only work when there's exactly
+        # one hypercube. When the dataloader recorded each hypercube's true
+        # global block position, use that instead so every hypercube's
+        # points land at their real location.
+        hypercube_ids_by_ts = getattr(self.args, 'hypercube_ids_per_timestep', None)
+        hypercube_ids = hypercube_ids_by_ts[timestep] if hypercube_ids_by_ts is not None else None
 
-        # Plot the KMeans 3D scatter
-        plot_kmeans_3d(x, y, z, labels, timestep, self.args.plot_dir, self.args.cluster_var)
+        if hypercube_ids is not None:
+            gx, gy, gz = self._global_point_coords(hypercube_ids)
 
-        # Plot the 3D contour box if you have data to show.
-        # We assume 'self.cv[timestep, :]' is shape (len(x)*len(y)*len(z),).
-        contour_data = self.cv[timestep, :]
-        plot_contour_box_3d(x, y, z, contour_data, timestep)
+            plot_points_3d(gx, gy, gz, labels, self.args.plot_dir,
+                            filename=f'kmeans_{timestep:04d}.png',
+                            title=f'KMeans clustering of {self.args.cluster_var}')
 
-        # Plot samples
-        plot_samples(maxent_indices, labels[maxent_indices], x, y, z, timestep)
+            plot_points_3d(gx[maxent_indices], gy[maxent_indices], gz[maxent_indices],
+                            labels[maxent_indices], self.args.plot_dir,
+                            filename=f'subsample_plot_t{timestep:04d}.png',
+                            title='MaxEnt subsampled points')
+
+            # A single filled-contour box only makes sense over one
+            # contiguous grid, so draw one per hypercube instead of trying
+            # to force disjoint boxes into a single regular grid.
+            nxsl, nysl, nzsl = self.args.nxsl, self.args.nysl, self.args.nzsl
+            num_pts = nxsl * nysl * nzsl
+            for h, (ix, iy, iz) in enumerate(hypercube_ids):
+                x_h = ix * nxsl + np.arange(nxsl)
+                y_h = iy * nysl + np.arange(nysl)
+                z_h = iz * nzsl + np.arange(nzsl)
+                contour_data_h = self.cv[timestep, h * num_pts:(h + 1) * num_pts, 0]
+                plot_contour_box_3d(x_h, y_h, z_h, contour_data_h, timestep, suffix=f'_h{h}')
+        else:
+            x, y, z = self.coords
+
+            # Plot the KMeans 3D scatter
+            plot_kmeans_3d(x, y, z, labels, timestep, self.args.plot_dir, self.args.cluster_var)
+
+            # Plot the 3D contour box. Only the first cluster_var component
+            # is shown -- a filled contour is inherently a single scalar
+            # field, so this doesn't attempt to reshape all cluster_var
+            # channels together (that previously raised a reshape error
+            # whenever cluster_var had more than one entry).
+            contour_data = self.cv[timestep, :, 0]
+            plot_contour_box_3d(x, y, z, contour_data, timestep)
+
+            # Plot samples
+            plot_samples(maxent_indices, labels[maxent_indices], x, y, z, timestep)
 
         # Plot the cluster histogram.
         plot_cluster_histogram(labels, self.args.num_clusters, timestep, self.args.plot_dir)

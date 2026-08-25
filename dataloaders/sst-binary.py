@@ -90,6 +90,12 @@ class DataLoaderSSTBinary(DataLoader):
         cv_arr = np.zeros((num_timesteps, num_points, len(cv_labels)))
 
 
+        # hypercube_ids are recomputed per timestep below; keep them in memory
+        # (indexed the same way as X/Y/cv's first axis) so callers -- e.g. the
+        # maxent subsampler's diagnostic plots -- can recover each hypercube's
+        # true global block position without re-reading files from disk.
+        hypercube_ids_per_timestep = []
+
         for j, ts in enumerate(t_labels):
             """
             TODO:
@@ -98,6 +104,7 @@ class DataLoaderSSTBinary(DataLoader):
             """
             file_paths = [os.path.join(self.path, f'{v}_{ts:0.6f}') for v in cv_labels]
             hypercube_ids = self.hypercube_handler.extract_ids(file_paths)
+            hypercube_ids_per_timestep.append(hypercube_ids)
 
             # Save hypercube_ids per timestep
             out_file = os.path.join(self.args.output_dir, f"hypercube_ids_{ts:0.6f}.npz")
@@ -113,6 +120,10 @@ class DataLoaderSSTBinary(DataLoader):
             for i, var in enumerate(y_labels):
                 file_path = os.path.join(self.path, f'{var}_{ts:0.6f}')
                 Y[j, :, i] = self._load_and_process_hypercubes(var, ts, file_path, hypercube_ids)
+
+        # Stash on args (not the return tuple) so load_data()'s 6-value
+        # contract stays unchanged for its other callers.
+        self.args.hypercube_ids_per_timestep = hypercube_ids_per_timestep
 
         return X, Y, cv_arr
 
