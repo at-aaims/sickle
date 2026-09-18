@@ -1,0 +1,25 @@
+shared:
+  dtype: heaviside
+  noseed: true
+  cluster_var: [eta]
+  N: 4096
+  A1: 0.8
+  k1: 16.0
+  r0: 0.75
+  num_timesteps: 20
+  fileprefix: "HEAVISIDE-X{method}-ns{num_samples}-nc{num_clusters}"
+
+subsample:
+  hypercubes: uniform
+  num_hypercubes: 1
+  method: maxent
+  path: ./data
+  num_samples: 256
+  num_clusters: 10
+
+train:
+  epochs: 50
+  batch: 32
+  target: eta
+  window: 1
+  arch: fcn_sst

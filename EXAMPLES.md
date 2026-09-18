@@ -11,6 +11,7 @@ This document provides detailed examples for using SICKLE in various scenarios, 
 - [Parallel Execution Examples](#parallel-execution-examples)
 - [Visualizing Subsampled Hypercubes and Points](#visualizing-subsampled-hypercubes-and-points)
 - [Flow Over Cylinder Example](#flow-over-cylinder-example)
+- [Sine + Heaviside Synthetic Case](#sine--heaviside-synthetic-case)
 - [Comparing Methods](#comparing-methods)
 
 ## Subsampling Examples
@@ -118,6 +119,39 @@ sampled points, in one 3D view.
   python subsample.py config/OF/default.yaml -m maxent --target drag -ns 1080 -nc 20 -cv wz
   python subsample.py config/OF/default.yaml -m uips --target drag -ns 1080 -nc 20 --plot
   ```
+
+## Sine + Heaviside Synthetic Case
+
+`dtype: heaviside` (`dataloaders/heaviside.py`) needs no input data at all -- it generates a
+1D field on the fly:
+
+```
+eta(r) = sin(2*pi*r) + 1[r >= r0] * A1 * sin(2*pi*k1*r),   r_j = (j+0.5)/N
+```
+
+a smooth sine with a localized high-frequency "switch" region turned on at `r0`. It's a
+quick sanity check that MaxEnt preferentially resolves that known structural region
+relative to random sampling, with no CFD data or fluidfoam/HDF5 dependencies required.
+Field parameters (`N`, `A1`, `k1`, `r0`) are set under `shared:` in the YAML (see
+`config/HEAVISIDE/maxent.yaml`); everything else is a normal `subsample.py`/`train.py`
+run, since this dataloader is otherwise just like any other dtype:
+
+```bash
+python subsample.py config/HEAVISIDE/maxent.yaml
+python subsample.py config/HEAVISIDE/random.yaml
+
+python -u train.py config/HEAVISIDE/maxent.yaml
+```
+
+- `target: eta` / `-cv eta` (the default in the provided configs) trains on and clusters
+  the continuous field value.
+- `target: event` / `-cv event` switches to the binary switch-region indicator
+  (`1[r >= r0]`) instead, if you want to test recovery of the structural event directly
+  rather than the value field.
+- `-cv` only uses its first entry for this loader (single scalar cluster variable), same
+  as `dtype: openfoam`.
+- Since the field is deterministic, every timestep is an identical copy; `num_timesteps`
+  just controls how many independent subsampler draws you get, not real time evolution.
 
 ## Comparing Methods
 

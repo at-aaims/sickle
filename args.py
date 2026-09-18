@@ -30,7 +30,7 @@ parser.add_argument('-m', '--method', choices=choices, default='maxent', help='s
 parser.add_argument('-ns', '--num_samples', type=int, default=100, help='number of subsamples per hypercube')
 
 parser.add_argument('-nc', '--num_clusters', type=int, default=10, help='number of clusters for k-means')
-choices = ['p', 'pv', 'wz', 'pwz', 'r', 'u', 'v', 'w']
+choices = ['p', 'pv', 'wz', 'pwz', 'r', 'u', 'v', 'w', 'eta', 'event']
 parser.add_argument('-cv', '--cluster_var', nargs="+", type=str, default='pv', choices=choices, help='cluster variable')
 parser.add_argument('--cutoff', type=float, default=0.5, help='optimal data cutoff factor, e.g., 0.1 keep top ten percent')
 parser.add_argument('--dims', type=int, default=2, choices=[2, 3], help='dataset dimensionality, 2 or 3 dimensions')
@@ -57,9 +57,9 @@ choices = ['StandardScaler', 'MinMaxScaler', 'PowerTransformer', 'None']
 parser.add_argument('--xscaler', type=str, default='MinMaxScaler', choices=choices, help='scaler function')
 parser.add_argument('--yscaler', type=str, default='StandardScaler', choices=choices, help='scaler function')
 parser.add_argument('--yscalefactor', type=float, default=3, help='scalefactor to divide target by before training')
-parser.add_argument('--dtype', type=str, default='openfoam', choices=['openfoam', 'csv', 'npz', 'sst-binary', 'gests', 'gests+'], help='data type')
+parser.add_argument('--dtype', type=str, default='openfoam', choices=['openfoam', 'csv', 'npz', 'sst-binary', 'gests', 'gests+', 'heaviside'], help='data type')
 parser.add_argument('--test_frac', type=float, default=0.1, help='fraction of data to hold out for testing')
-parser.add_argument('--target', type=str, default='wz', choices=['drag', 'p', 'p_full', 'wz', 'tke'], help='training target')
+parser.add_argument('--target', type=str, default='wz', choices=['drag', 'p', 'p_full', 'wz', 'tke', 'eta', 'event'], help='training target')
 parser.add_argument('--timesteps', nargs='+', type=float, default=None, help='Specific timesteps to load (e.g., --timesteps 28.04 29.24)')
 parser.add_argument('-s', '--snapshot', action='store_true', default=False, help='load snapshots/raw_data.npz instead of running dataloader')
 parser.add_argument('--sequence', action='store_true', default=False, help='aggregate individual time-steps into a sequence')
@@ -91,6 +91,12 @@ parser.add_argument("--Lh", type=float, default=1.0, required=False, help="Horiz
 parser.add_argument("--Lv", type=float, default=0.5, required=False, help="Vertical length of full box")
 parser.add_argument("--input_vars", nargs="+", type=str, default=['u' 'v' 'w' 'r'], help="variable name(s) for input to model: 'r' 'u' 'v' 'w'. It can be single or multiple vars. NOTE: change --in_channels accordingly.")
 parser.add_argument("--output_vars", nargs="+", type=str, default=['p' 'pv'], help="variable name(s) for model output: 'p' 'pv'. It can be single or multiple vars. NOTE: change --out_channels accordingly.")
+# Heaviside synthetic case args (dtype=heaviside)
+parser.add_argument("--N", type=int, default=4096, required=False, help="heaviside: number of grid points")
+parser.add_argument("--A1", type=float, default=0.8, required=False, help="heaviside: switch-region amplitude")
+parser.add_argument("--k1", type=float, default=16.0, required=False, help="heaviside: switch-region frequency")
+parser.add_argument("--r0", type=float, default=0.75, required=False, help="heaviside: switch location in (0, 1)")
+
 parser.add_argument('--output_dir', type=str, default='./snapshots', help='output directory')
 parser.add_argument('--plot_dir', type=str, default='./plots', help='plots directory')
 parser.add_argument("--saveData", default=False, action='store_true', help="Save data.")
