@@ -133,14 +133,14 @@ a smooth sine with a localized high-frequency "switch" region turned on at `r0`.
 quick sanity check that MaxEnt preferentially resolves that known structural region
 relative to random sampling, with no CFD data or fluidfoam/HDF5 dependencies required.
 Field parameters (`N`, `A1`, `k1`, `r0`) are set under `shared:` in the YAML (see
-`config/HEAVISIDE/maxent.yaml`); everything else is a normal `subsample.py`/`train.py`
+`config/synthetic/maxent.yaml`); everything else is a normal `subsample.py`/`train.py`
 run, since this dataloader is otherwise just like any other dtype:
 
 ```bash
-python subsample.py config/HEAVISIDE/maxent.yaml
-python subsample.py config/HEAVISIDE/random.yaml
+python subsample.py config/synthetic/maxent.yaml
+python subsample.py config/synthetic/random.yaml
 
-python -u train.py config/HEAVISIDE/maxent.yaml
+python -u train.py config/synthetic/maxent.yaml
 ```
 
 - `target: eta` / `-cv eta` (the default in the provided configs) trains on and clusters
