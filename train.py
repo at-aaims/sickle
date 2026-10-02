@@ -275,8 +275,8 @@ def main():
     # Expand dims if no time dimension exists.
     if len(X.shape) in [3, 5]:
         X = np.expand_dims(X, axis=1)  # X becomes (B, 1, 32, 32, 32, 4)
-    if len(Y.shape) == 5:
-        Y = np.expand_dims(Y, axis=1)  # Y becomes (B, 1, 32, 32, 32, 1)
+    if len(Y.shape) in [3, 5]:
+        Y = np.expand_dims(Y, axis=1)  # Y becomes (B, 1, 32, 32, 32, 1) or (B, 1, NSAMPLES, C)
     print(f"After dim exp X: {X.shape}; Y: {Y.shape}", flush=True)
     
     if args.method == "full":
