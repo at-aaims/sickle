@@ -6,7 +6,7 @@ import pandas as pd
 from .base import Subsampler
 from plotting import plot_adjacency_matrix, plot_kmeans_3d, plot_prob_dists, \
                      plot_cluster_histogram, plot_contour_box_3d, plot_samples, \
-                     plot_points_3d
+                     plot_points_3d, plot_field_1d
 
 class MaxentSubsampler(Subsampler):
     def __init__(self, data, args, **kwargs):
@@ -157,6 +157,11 @@ class MaxentSubsampler(Subsampler):
                 z_h = iz * nzsl + np.arange(nzsl)
                 contour_data_h = self.cv[timestep, h * num_pts:(h + 1) * num_pts, 0]
                 plot_contour_box_3d(x_h, y_h, z_h, contour_data_h, timestep, suffix=f'_h{h}')
+        elif np.size(self.coords[0]) * np.size(self.coords[1]) * np.size(self.coords[2]) != data.shape[0]:
+            # 1D loader (e.g. heaviside): coords are length-N vectors, so the
+            # 3D meshgrid-based plots would allocate N^3 points.
+            plot_field_1d(self.coords[0], data[:, 0], labels, maxent_indices,
+                          timestep, self.args.plot_dir, self.args.cluster_var)
         else:
             x, y, z = self.coords
 

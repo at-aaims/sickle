@@ -384,3 +384,22 @@ def plot_contour_box_3d(x, y, z, data, timestep, suffix=''):
 #    )
 #    plt.savefig(os.path.join(args.plot_dir, f'uips_pdf.png'), dpi=100)
 #    plt.close()
+
+
+def plot_field_1d(r, field, labels, maxent_indices, timestep, plot_dir, cluster_var):
+    """1D analogue of the 3D k-means / sample plots: the field vs. position,
+    colored by k-means cluster, with the maxent-selected points overlaid."""
+    r = np.asarray(r).ravel()
+    field = np.asarray(field).ravel()
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ax.scatter(r, field, c=labels, cmap='tab10', s=6)
+    ax.scatter(r[maxent_indices], field[maxent_indices], facecolors='none',
+               edgecolors='k', s=30, linewidths=0.6, label='MaxEnt samples')
+    ax.set_xlabel('r')
+    ax.set_ylabel(cluster_var[0])
+    ax.set_title(f'KMeans clusters and MaxEnt samples (t={timestep})')
+    ax.legend(loc='upper left')
+    fn = f'field1d_{timestep:04d}.png'
+    print(f'Creating {fn}', flush=True)
+    fig.savefig(os.path.join(plot_dir, fn), dpi=100, bbox_inches='tight')
+    plt.close(fig)
