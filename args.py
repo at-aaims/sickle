@@ -96,6 +96,13 @@ parser.add_argument("--N", type=int, default=4096, required=False, help="heavisi
 parser.add_argument("--A1", type=float, default=0.8, required=False, help="heaviside: switch-region amplitude")
 parser.add_argument("--k1", type=float, default=16.0, required=False, help="heaviside: switch-region frequency")
 parser.add_argument("--r0", type=float, default=0.75, required=False, help="heaviside: switch location in (0, 1)")
+parser.add_argument("--wave_speed", type=float, default=0.0, required=False, help="heaviside: advection speed of the base sine wave")
+parser.add_argument("--hf_wave_speed", type=float, default=0.0, required=False, help="heaviside: advection speed of the high-frequency wave")
+parser.add_argument("--front_speed", type=float, default=0.0, required=False, help="heaviside: speed of the switch front r0(t) = r0 + v*t (reflected in [0, 1])")
+parser.add_argument("--amp_eps", type=float, default=0.0, required=False, help="heaviside: relative amplitude fluctuation strength (bursty A(t))")
+parser.add_argument("--amp_tau", type=float, default=1.0, required=False, help="heaviside: correlation time of the amplitude fluctuation")
+parser.add_argument("--step_dt", type=float, default=1.0, required=False, help="heaviside: time between timesteps")
+parser.add_argument("--field_seed", type=int, default=0, required=False, help="heaviside: seed for the amplitude fluctuation (independent of --noseed)")
 
 parser.add_argument('--output_dir', type=str, default='./snapshots', help='output directory')
 parser.add_argument('--plot_dir', type=str, default='./plots', help='plots directory')

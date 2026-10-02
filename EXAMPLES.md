@@ -150,8 +150,17 @@ python -u train.py config/HEAVISIDE/maxent.yaml
   rather than the value field.
 - `-cv` only uses its first entry for this loader (single scalar cluster variable), same
   as `dtype: openfoam`.
-- Since the field is deterministic, every timestep is an identical copy; `num_timesteps`
-  just controls how many independent subsampler draws you get, not real time evolution.
+- The field evolves in time (t = k*`step_dt`), so each timestep has different clusters
+  and a different known event region:
+  `eta(r,t) = sin(2*pi*(r - wave_speed*t)) + 1[r >= r0(t)] * A(t) * sin(2*pi*k1*(r - hf_wave_speed*t))`.
+  `front_speed` moves the switch front (`r0(t) = r0 + front_speed*t`, reflected in [0, 1]),
+  and `amp_eps`/`amp_tau` make the high-frequency amplitude bursty
+  (`A(t) = A1*max(0, 1 + amp_eps*s(t))`, `s` an Ornstein-Uhlenbeck process). The
+  `event` target/cluster variable is the exact indicator at each timestep. `field_seed`
+  makes the field reproducible independently of `noseed`.
+- Setting `wave_speed`, `hf_wave_speed`, `front_speed` and `amp_eps` to 0 (their defaults)
+  gives the static field, where every timestep is an identical copy and `num_timesteps`
+  only controls the number of independent subsampler draws.
 
 ## Comparing Methods
 

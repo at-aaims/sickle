@@ -7,6 +7,14 @@ shared:
   k1: 16.0
   r0: 0.75
   num_timesteps: 20
+  # time evolution (set all to 0 for the static field)
+  step_dt: 0.05
+  wave_speed: 0.2
+  hf_wave_speed: 0.5
+  front_speed: 0.05
+  amp_eps: 0.4
+  amp_tau: 0.3
+  field_seed: 0
   fileprefix: "HEAVISIDE-X{method}-ns{num_samples}-nc{num_clusters}"
 
 subsample:
