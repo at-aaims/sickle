@@ -166,5 +166,5 @@ if __name__ == "__main__":
     # Save output
     outfilename = f"subsampled_{args.fileprefix}.npz"
     outfile = os.path.join(args.output_dir, outfilename)
-    np.savez(outfile, X=Xout, Y=Yout, x=x, y=y, z=z)
+    np.savez(outfile, X=Xout, Y=Yout, x=x, y=y, z=z, indices=indices_list)
     print(f'Subsampled data saved to {outfile}')
