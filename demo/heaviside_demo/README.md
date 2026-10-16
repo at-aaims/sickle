@@ -2,7 +2,8 @@
 
 An interactive page: ground truth, samples and a U-Net reconstruction, with sliders for
 the burst wavenumber k, amplitude A, front position r0, background wave, number of
-samples M, sampling pattern and noise. The U-Net runs in the browser (plain JS, in a
+samples M, sampling pattern (uniform random, MaxEnt, jittered grid, regular grid,
+random with a gap) and noise. The U-Net runs in the browser (plain JS, in a
 Web Worker); no server is needed. Open `heaviside_demo.html`.
 
 Unlike `train_recon.py`, which trains on five fixed field configurations, every training
@@ -35,8 +36,13 @@ in wavenumber.
 - `train_demo.py`: trains the model (`models/unet1d/demo_randomized/`, not committed) and
   exports `model_weights.js` (float16 weights plus a reference input/output pair).
 - `unet.js`: the JS forward pass.
+- `maxent.js`: JS port of sickle's MaxEnt sampler (`subsampling/maxent.py`), run on the
+  ground-truth field. sklearn's k-means++ is replaced by Lloyd's algorithm from quantile
+  centers; on test fields the per-point probabilities match sickle's within an L1 distance
+  of 0.015. As in the study, they come out close to uniform (max/min about 1.02 to 1.07),
+  so MaxEnt masks look like random masks to the model. The page plots the probabilities.
 - `check_js.js`: compares `unet.js` against the PyTorch reference (`node check_js.js`).
-- `index.html`: page template; `build_page.py` inlines the weights and `unet.js` into
+- `index.html`: page template; `build_page.py` inlines the weights, `unet.js` and `maxent.js` into
   `heaviside_demo.html`.
 
 ```bash

@@ -17,9 +17,10 @@ def read(name):
 
 if __name__ == '__main__':
     page = read('index.html')
-    weights, unet = read('model_weights.js'), read('unet.js')
-    assert '</script' not in weights and '</script' not in unet
+    weights, unet, maxent = read('model_weights.js'), read('unet.js'), read('maxent.js')
+    assert all('</script' not in s for s in (weights, unet, maxent))
     page = page.replace('<!-- INLINE:model_weights.js -->', '<script>\n' + weights + '</script>')
+    page = page.replace('<!-- INLINE:maxent.js -->', '<script>\n' + maxent + '</script>')
     page = page.replace('<!-- INLINE:unet.js -->', unet)
     assert '<!-- INLINE:' not in page
     out = os.path.join(HERE, 'heaviside_demo.html')

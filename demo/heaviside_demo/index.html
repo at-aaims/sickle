@@ -74,7 +74,7 @@ h1 { font: 700 clamp(24px, 3.2vw, 34px)/1.1 var(--font-display); margin: 0; lett
 canvas { display: block; width: 100%; touch-action: none; }
 #main { height: 330px; cursor: crosshair; }
 #zoom { height: 210px; cursor: crosshair; }
-#err { height: 110px; }
+#err, #prob { height: 110px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 2px 4px 0; }
 .legend label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; user-select: none; }
 .legend input { margin: 0; accent-color: var(--unet); }
@@ -163,6 +163,11 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
         <div class="plot-head"><h2>Pointwise error |prediction − truth|</h2><span class="hint">Same x axis as the full domain</span></div>
         <canvas id="err" aria-label="Pointwise absolute error"></canvas>
       </div>
+
+      <div class="plot" id="prob-panel" hidden>
+        <div class="plot-head"><h2>MaxEnt sampling probability, relative to uniform</h2><span class="hint" id="prob-hint"></span></div>
+        <canvas id="prob" aria-label="MaxEnt sampling probability per point"></canvas>
+      </div>
     </section>
 
     <aside class="rack" aria-label="Controls">
@@ -179,10 +184,12 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
       <div class="ctl" id="ctl-pattern"><div class="row"><label for="pattern">Sampling pattern</label></div>
         <select id="pattern">
           <option value="random">Uniform random (trained)</option>
+          <option value="maxent">MaxEnt (sickle's sampler)</option>
           <option value="jitter">Jittered grid (trained)</option>
           <option value="grid">Regular grid</option>
           <option value="gap">Random with a gap at 0.45 to 0.60</option>
-        </select></div>
+        </select>
+        <span class="note" id="pattern-note" hidden>k-means on the full field (10 clusters), KL in-strength per cluster, then a weighted draw without replacement, as in subsampling/maxent.py</span></div>
       <div class="ctl" id="ctl-noise"><div class="row"><label for="noise">Measurement noise σ</label><output id="o-noise"></output></div><input type="range" id="noise" min="0" max="0.2" step="0.005"></div>
 
       <h3>Burst</h3>
@@ -202,11 +209,13 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
 
   <footer>
     <p>Waves travel at sickle's speeds while playing: the background at 0.2 and the burst at 0.5 domain lengths per unit time. The U-Net (archs/unet1d.py, channels 16/32/64/128, 711k parameters) takes the linear interpolation, the sample mask and the sample values, and predicts a correction to the interpolation. It was trained with every field drawn at random: k from 2 to 32, A from 0 to 1.5, any r₀, k₀ from 0.5 to 3, A₀ from 0 to 1.5, M from 8 to 256, and noise up to σ = 0.05 on half the fields.</p>
+    <p>MaxEnt is a port of sickle's sampler (subsampling/maxent.py): k-means on the full ground-truth field, a 50-bin histogram per cluster, summed KL divergence into each cluster, and points drawn with probability proportional to their cluster's score. It needs the whole field to choose its samples. On a 1D field the clusters cover separate value ranges, so every pairwise KL hits the same floor and the probabilities come out close to uniform; the strip under the error panel shows this. The model was trained on uniform random and jittered-grid masks only.</p>
     <p>Source: <code>demo/heaviside_demo/</code> on the <code>heaviside-demo</code> branch of sickle.</p>
   </footer>
 </div>
 
 <!-- INLINE:model_weights.js -->
+<!-- INLINE:maxent.js -->
 <script id="unet-src" type="text/plain">
 <!-- INLINE:unet.js -->
 </script>
@@ -275,7 +284,16 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
     return g;
   }
   let maskCache = { key: null, idx: null };
-  function sampleIdx(M, pattern, seed) {
+  let maxent = null;  // { probs, K, ratio } for the current field when pattern is maxent
+  function sampleIdx(M, pattern, seed, eta) {
+    if (pattern === 'maxent') {  // depends on the field, so never cached
+      const res = DemoMaxent.maxentProbs(eta);
+      let mx = 0, mn = Infinity;
+      for (const p of res.probs) { mx = Math.max(mx, p); mn = Math.min(mn, p); }
+      maxent = { probs: res.probs, K: res.K, ratio: mn > 0 ? mx / mn : Infinity };
+      return DemoMaxent.weightedSample(res.probs, M, mulberry32(seed));
+    }
+    maxent = null;
     const key = M + '|' + pattern + '|' + seed;
     if (maskCache.key === key) return maskCache.idx;
     const rnd = mulberry32(seed);
@@ -314,7 +332,7 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
       eta[i] = state.A0 * Math.sin(2 * Math.PI * (state.k0 * r[i] + ph0))
              + (r[i] >= r0 ? state.A * Math.sin(2 * Math.PI * (state.k * r[i] + ph1)) : 0);
     }
-    const idx = sampleIdx(state.M, state.pattern, state.seed);
+    const idx = sampleIdx(state.M, state.pattern, state.seed, eta);
     const g = gaussians(state.seed);
     const sv = idx.map(i => eta[i] + state.noise * g[i]);
     // linear interpolation, held constant past the first and last sample
@@ -378,7 +396,9 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
     const mBad = state.M < R.M[0] || state.M > R.M[1];
     $('ctl-M').classList.toggle('ood', mBad);
     if (mBad) out.push('M');
-    if (state.pattern === 'grid' || state.pattern === 'gap') out.push('pattern');
+    // MaxEnt masks were not in training; they only count as out of range when
+    // the probabilities stray far from uniform (in 1D they usually do not).
+    if (state.pattern === 'grid' || state.pattern === 'gap' || (state.pattern === 'maxent' && maxent && maxent.ratio > 1.5)) out.push('pattern');
     return out;
   }
   function syncLabels() {
@@ -546,6 +566,25 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
     const fe = frame($('err'), 0, 1, 0, etop, niceTicks(0, etop, 2), [0, 0.2, 0.4, 0.6, 0.8, 1]);
     if ($('show-linear').checked) line(fe, el, 0, N - 1, css.linear, 1.2);
     if (pred) line(fe, eu, 0, N - 1, css.unet, 1.2);
+
+    // MaxEnt probability strip: p_i * N, so 1 means uniform
+    $('pattern-note').hidden = state.pattern !== 'maxent';
+    $('prob-panel').hidden = !maxent;
+    if (maxent) {
+      const rel = new Float32Array(N);
+      let pmax = 0, burstMass = 0;
+      for (let i = 0; i < N; i++) {
+        rel[i] = maxent.probs[i] * N; pmax = Math.max(pmax, rel[i]);
+        if (r[i] >= cur.r0) burstMass += maxent.probs[i];
+      }
+      const top = Math.max(2, Math.ceil(pmax * 1.1));
+      const fp = frame($('prob'), 0, 1, 0, top, niceTicks(0, top, 2), [0, 0.2, 0.4, 0.6, 0.8, 1]);
+      fp.ctx.save(); fp.ctx.setLineDash([4, 3]); fp.ctx.strokeStyle = css.muted;
+      fp.ctx.beginPath(); fp.ctx.moveTo(PAD.l, fp.Y(1)); fp.ctx.lineTo(fp.w - PAD.r, fp.Y(1)); fp.ctx.stroke(); fp.ctx.restore();
+      line(fp, rel, 0, N - 1, css.unet, 1.5);
+      $('prob-hint').textContent = `${maxent.K} clusters · max/min ${maxent.ratio.toFixed(2)} · ` +
+        `burst gets ${(100 * burstMass).toFixed(0)}% of the probability on ${(100 * (1 - cur.r0)).toFixed(0)}% of the domain`;
+    }
 
     const fmt = v => v.toExponential(2).replace('e-', 'e−');
     $('s-unet').textContent = pred ? fmt(su / N) : '-';
